@@ -1,0 +1,363 @@
+---
+title: Middleware
+description: Pre and post hooks for document, query, model, and aggregation operations
+---
+
+# Middleware
+
+Middleware (pre/post hooks) are functions that execute before or after specific operations. They're useful for validation, logging, transformations, and side effects.
+
+## Hook Types
+
+Mondoose supports four types of middleware:
+
+1. **Document middleware** - `validate`, `save`, `remove`, `updateOne`, `deleteOne`, `init`
+2. **Query middleware** - `find`, `findOne`, `updateOne`, `deleteOne`, `updateMany`, `deleteMany`
+3. **Model middleware** - `insertMany`
+4. **Aggregate middleware** - `aggregate`
+
+## Pre Hooks
+
+Pre hooks run before an operation:
+
+```typescript
+const userSchema = new Schema({ name: String, email: String })
+
+// Pre-save hook
+userSchema.pre('save', function(next) {
+  // 'this' is the document
+  this.updatedAt = new Date()
+  next()
+})
+
+// Async pre hook
+userSchema.pre('save', async function() {
+  // No need to call next() with async
+  await this.hashPassword()
+})
+```
+
+## Post Hooks
+
+Post hooks run after an operation:
+
+```typescript
+// Post-save hook
+userSchema.post('save', function(doc) {
+  console.log('User saved:', doc.name)
+})
+
+// Post-save with error handling
+userSchema.post('save', function(doc, next) {
+  sendWelcomeEmail(doc.email)
+    .then(() => next())
+    .catch(next)
+})
+```
+
+## Document Middleware
+
+### save
+
+Runs when calling `document.save()`:
+
+```typescript
+userSchema.pre('save', function(next) {
+  if (this.isModified('password')) {
+    this.password = hashPassword(this.password)
+  }
+  next()
+})
+
+userSchema.post('save', function(doc) {
+  console.log('Saved user:', doc._id)
+})
+```
+
+### validate
+
+Runs during validation:
+
+```typescript
+userSchema.pre('validate', function(next) {
+  if (!this.email && !this.phone) {
+    next(new Error('Email or phone required'))
+  }
+  next()
+})
+```
+
+### remove / deleteOne
+
+Runs when deleting a document:
+
+```typescript
+userSchema.pre('deleteOne', { document: true, query: false }, function(next) {
+  // Clean up related data
+  await Post.deleteMany({ author: this._id })
+  next()
+})
+```
+
+### init
+
+Runs when a document is initialized from the database:
+
+```typescript
+userSchema.post('init', function(doc) {
+  console.log('Document initialized:', doc._id)
+})
+```
+
+## Query Middleware
+
+Query middleware runs on query operations:
+
+```typescript
+// Pre-find hook
+userSchema.pre('find', function(next) {
+  // 'this' is the query
+  this.where({ deleted: { $ne: true } })
+  next()
+})
+
+// Pre-findOne hook
+userSchema.pre('findOne', function(next) {
+  this.populate('profile')
+  next()
+})
+
+// Post-find hook
+userSchema.post('find', function(docs) {
+  console.log(`Found ${docs.length} users`)
+})
+```
+
+### Available Query Hooks
+
+```typescript
+// All query hooks
+userSchema.pre('find', fn)
+userSchema.pre('findOne', fn)
+userSchema.pre('findOneAndUpdate', fn)
+userSchema.pre('findOneAndDelete', fn)
+userSchema.pre('findOneAndReplace', fn)
+userSchema.pre('updateOne', fn)
+userSchema.pre('updateMany', fn)
+userSchema.pre('deleteOne', fn)
+userSchema.pre('deleteMany', fn)
+userSchema.pre('replaceOne', fn)
+userSchema.pre('count', fn)
+userSchema.pre('countDocuments', fn)
+userSchema.pre('estimatedDocumentCount', fn)
+userSchema.pre('distinct', fn)
+```
+
+## Model Middleware
+
+### insertMany
+
+```typescript
+userSchema.pre('insertMany', function(next, docs) {
+  docs.forEach(doc => {
+    doc.createdAt = new Date()
+  })
+  next()
+})
+
+userSchema.post('insertMany', function(docs) {
+  console.log(`Inserted ${docs.length} users`)
+})
+```
+
+## Aggregate Middleware
+
+```typescript
+userSchema.pre('aggregate', function(next) {
+  // Add a $match stage at the beginning
+  this.pipeline().unshift({ $match: { deleted: { $ne: true } } })
+  next()
+})
+
+userSchema.post('aggregate', function(result) {
+  console.log('Aggregation returned', result.length, 'results')
+})
+```
+
+## Error Handling
+
+### Pre Hook Errors
+
+```typescript
+userSchema.pre('save', function(next) {
+  if (this.age < 0) {
+    next(new Error('Age cannot be negative'))
+  }
+  next()
+})
+```
+
+### Post Error Hooks
+
+Handle errors from operations:
+
+```typescript
+userSchema.post('save', function(error, doc, next) {
+  if (error.name === 'MongoServerError' && error.code === 11000) {
+    next(new Error('Duplicate key error'))
+  } else {
+    next(error)
+  }
+})
+```
+
+## Parallel Hooks
+
+Run multiple hooks in parallel:
+
+```typescript
+userSchema.pre('save', true, function(next, done) {
+  // Start parallel execution
+  next()
+
+  // Do async work
+  setTimeout(() => {
+    done()  // Signal completion
+  }, 100)
+})
+```
+
+## Hook Options
+
+### Document vs Query
+
+Specify whether a hook applies to documents or queries:
+
+```typescript
+// Document middleware (this = document)
+userSchema.pre('deleteOne', { document: true, query: false }, function() {
+  console.log('Deleting document:', this._id)
+})
+
+// Query middleware (this = query)
+userSchema.pre('deleteOne', { document: false, query: true }, function() {
+  console.log('Delete query:', this.getFilter())
+})
+```
+
+## Accessing the Document
+
+In pre-save hooks, `this` is the document:
+
+```typescript
+userSchema.pre('save', function(next) {
+  console.log(this.name)  // Access document properties
+  console.log(this.isNew) // Check if new document
+  console.log(this.isModified('email')) // Check modifications
+  next()
+})
+```
+
+In query hooks, `this` is the query:
+
+```typescript
+userSchema.pre('find', function(next) {
+  console.log(this.getFilter())    // Get query filter
+  console.log(this.getOptions())   // Get query options
+  this.where({ active: true })     // Modify query
+  next()
+})
+```
+
+## Common Patterns
+
+### Auto-populate
+
+```typescript
+userSchema.pre('find', function(next) {
+  this.populate('organization')
+  next()
+})
+
+userSchema.pre('findOne', function(next) {
+  this.populate('organization')
+  next()
+})
+```
+
+### Soft Delete
+
+```typescript
+userSchema.pre('find', function(next) {
+  this.where({ deletedAt: null })
+  next()
+})
+
+userSchema.pre('findOne', function(next) {
+  this.where({ deletedAt: null })
+  next()
+})
+```
+
+### Timestamps
+
+```typescript
+userSchema.pre('save', function(next) {
+  const now = new Date()
+  if (this.isNew) {
+    this.createdAt = now
+  }
+  this.updatedAt = now
+  next()
+})
+```
+
+### Audit Logging
+
+```typescript
+userSchema.post('save', async function(doc) {
+  await AuditLog.create({
+    action: 'save',
+    model: 'User',
+    documentId: doc._id,
+    timestamp: new Date()
+  })
+})
+```
+
+### Password Hashing
+
+```typescript
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next()
+
+  this.password = await bcrypt.hash(this.password, 10)
+  next()
+})
+```
+
+## TypeScript Support
+
+```typescript
+import { Schema, PreMiddlewareFunction, PostMiddlewareFunction } from 'mondoose'
+
+interface User {
+  name: string
+  email: string
+  password: string
+}
+
+const preSave: PreMiddlewareFunction<User> = function(next) {
+  // 'this' is typed as User document
+  console.log(this.name)
+  next()
+}
+
+const postSave: PostMiddlewareFunction<User> = function(doc) {
+  // 'doc' is typed as User document
+  console.log(doc.email)
+}
+
+userSchema.pre('save', preSave)
+userSchema.post('save', postSave)
+```

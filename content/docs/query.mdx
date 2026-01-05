@@ -1,0 +1,456 @@
+---
+title: Query
+description: Build complex queries with the chainable query builder
+---
+
+# Query
+
+The Query class provides a chainable, fluent interface for building database queries. Queries are lazy - they don't execute until you `await` them or call `.exec()`.
+
+## Query Execution
+
+Queries can be executed in several ways:
+
+```typescript
+// Using await (most common)
+const users = await User.find({ role: 'admin' })
+
+// Using exec()
+const users = await User.find({ role: 'admin' }).exec()
+
+// Using then()
+User.find({ role: 'admin' }).then(users => {
+  console.log(users)
+})
+
+// Using callbacks (not recommended)
+User.find({ role: 'admin' }, (err, users) => {
+  if (err) console.error(err)
+  console.log(users)
+})
+```
+
+## Filter Methods
+
+### Basic Conditions
+
+```typescript
+// where() - start a condition chain
+User.find().where('age').gte(18)
+User.find().where('status', 'active')  // shorthand for equals
+User.find().where({ name: 'John', status: 'active' })  // object form
+
+// equals() / eq()
+User.find().where('role').equals('admin')
+User.find().where('age').eq(30)
+
+// ne() - not equal
+User.find().where('status').ne('deleted')
+
+// gt() / gte() - greater than / greater than or equal
+User.find().where('age').gt(18)
+User.find().where('age').gte(21)
+
+// lt() / lte() - less than / less than or equal
+User.find().where('age').lt(65)
+User.find().where('score').lte(100)
+```
+
+### Array Conditions
+
+```typescript
+// in() - value must be in array
+User.find().where('role').in(['admin', 'moderator'])
+
+// nin() - value must not be in array
+User.find().where('status').nin(['banned', 'deleted'])
+
+// all() - array must contain all values
+Post.find().where('tags').all(['javascript', 'tutorial'])
+
+// size() - array must have exact length
+Post.find().where('comments').size(10)
+
+// elemMatch() - array element must match conditions
+Order.find().where('items').elemMatch({
+  product: 'widget',
+  quantity: { $gte: 5 }
+})
+```
+
+### String Conditions
+
+```typescript
+// regex() - match regular expression
+User.find().where('email').regex(/@company\.com$/)
+User.find().where('name').regex(/^john/i)
+
+// With path argument
+User.find().regex('email', /@gmail\.com$/)
+```
+
+### Existence Checks
+
+```typescript
+// exists() - field must exist (or not exist)
+User.find().where('deletedAt').exists(false)  // Not deleted
+User.find().where('profile.avatar').exists(true)  // Has avatar
+```
+
+### Logical Operators
+
+```typescript
+// or() - match any condition
+User.find().or([
+  { role: 'admin' },
+  { role: 'moderator' }
+])
+
+// and() - match all conditions
+User.find().and([
+  { age: { $gte: 18 } },
+  { status: 'active' }
+])
+
+// nor() - match none of the conditions
+User.find().nor([
+  { status: 'banned' },
+  { status: 'deleted' }
+])
+```
+
+### Mathematical Conditions
+
+```typescript
+// mod() - modulo operation
+User.find().where('userId').mod(10, 0)  // userId % 10 === 0
+```
+
+## Query Options
+
+### Projection (Field Selection)
+
+```typescript
+// String syntax
+User.find().select('name email')           // Include only name and email
+User.find().select('-password -__v')       // Exclude password and __v
+User.find().select('+secretField')         // Include a normally excluded field
+
+// Array syntax
+User.find().select(['name', 'email', '-password'])
+
+// Object syntax
+User.find().select({ name: 1, email: 1 })
+User.find().select({ password: 0, __v: 0 })
+```
+
+### Sorting
+
+```typescript
+// String syntax
+User.find().sort('name')           // Ascending by name
+User.find().sort('-createdAt')     // Descending by createdAt
+User.find().sort('role -age')      // Multiple fields
+
+// Object syntax
+User.find().sort({ name: 1, age: -1 })
+User.find().sort({ createdAt: 'desc', name: 'asc' })
+
+// Array syntax
+User.find().sort([['name', 1], ['createdAt', -1]])
+```
+
+### Pagination
+
+```typescript
+// Basic pagination
+const page = 2
+const perPage = 20
+
+const users = await User.find()
+  .sort({ createdAt: -1 })
+  .skip((page - 1) * perPage)
+  .limit(perPage)
+
+// Get total count for pagination UI
+const total = await User.countDocuments()
+const totalPages = Math.ceil(total / perPage)
+```
+
+### Lean Mode
+
+Return plain JavaScript objects instead of Mondoose documents:
+
+```typescript
+// Documents (with methods, change tracking, etc.)
+const users = await User.find()
+users[0].save()  // Works
+
+// Plain objects (faster, less memory)
+const users = await User.find().lean()
+users[0].save()  // Error! No save method
+```
+
+### Query Options
+
+```typescript
+User.find()
+  .setOptions({
+    lean: true,
+    limit: 100,
+    skip: 0,
+    sort: { createdAt: -1 },
+    projection: { password: 0 },
+    batchSize: 1000,
+    maxTimeMS: 5000,
+    hint: { email: 1 },
+    comment: 'Admin user query',
+    allowDiskUse: true
+  })
+```
+
+## Chaining Examples
+
+```typescript
+// Complex query
+const users = await User
+  .find()
+  .where('age').gte(18).lte(65)
+  .where('status').equals('active')
+  .where('role').in(['user', 'admin'])
+  .select('name email age role')
+  .sort({ createdAt: -1 })
+  .skip(20)
+  .limit(10)
+  .lean()
+
+// With population
+const posts = await Post
+  .find({ status: 'published' })
+  .populate('author', 'name avatar')
+  .populate({
+    path: 'comments',
+    match: { approved: true },
+    populate: { path: 'user', select: 'name' }
+  })
+  .sort({ publishedAt: -1 })
+  .limit(10)
+```
+
+## Query Introspection
+
+```typescript
+const query = User.find({ role: 'admin' })
+  .where('age').gte(18)
+  .select('name email')
+  .sort({ createdAt: -1 })
+
+// Get the filter conditions
+const filter = query.getFilter()
+// { role: 'admin', age: { $gte: 18 } }
+
+// Get query options
+const options = query.getOptions()
+// { sort: { createdAt: -1 } }
+
+// Get projection
+const projection = query.getProjection()
+// { name: 1, email: 1 }
+
+// Get operation type
+const op = query.op()  // 'find'
+
+// Get the model
+const model = query.model()  // User
+
+// Convert to string
+console.log(query.toString())
+// Query { op: find, filter: {...}, options: {...} }
+```
+
+## Query Modification
+
+```typescript
+// Clone a query
+const baseQuery = User.find({ status: 'active' })
+const adminQuery = baseQuery.clone().where('role', 'admin')
+const userQuery = baseQuery.clone().where('role', 'user')
+
+// Merge queries
+const query = User.find({ status: 'active' })
+query.merge({ age: { $gte: 18 } })
+query.merge(anotherQuery)
+
+// Set/update query
+query.setQuery({ role: 'admin' })
+
+// Set update document (for update operations)
+query.setUpdate({ $set: { lastLogin: new Date() } })
+```
+
+## Cursors
+
+For large result sets, use cursors for streaming:
+
+```typescript
+// Get a cursor
+const cursor = User.find({ status: 'active' }).cursor()
+
+// Async iteration
+for await (const user of cursor) {
+  console.log(user.name)
+}
+
+// Check for more documents
+while (await cursor.hasNext()) {
+  const user = await cursor.next()
+  console.log(user.name)
+}
+
+// Process each document
+await cursor.eachAsync(async (user, index) => {
+  await processUser(user)
+}, { parallel: 5 })  // Process 5 at a time
+
+// Map to new array
+const names = await cursor.map(user => user.name)
+
+// Convert to array
+const users = await cursor.toArray()
+
+// Rewind to start
+cursor.rewind()
+
+// Close the cursor
+await cursor.close()
+```
+
+## Explain
+
+Analyze query execution:
+
+```typescript
+const explanation = await User
+  .find({ role: 'admin' })
+  .explain('executionStats')
+
+console.log(explanation)
+// {
+//   queryPlanner: { ... },
+//   executionStats: { ... }
+// }
+```
+
+## Filter Operators Reference
+
+### Comparison
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `$eq` | Equal | `{ age: { $eq: 30 } }` |
+| `$ne` | Not equal | `{ status: { $ne: 'deleted' } }` |
+| `$gt` | Greater than | `{ age: { $gt: 18 } }` |
+| `$gte` | Greater than or equal | `{ age: { $gte: 21 } }` |
+| `$lt` | Less than | `{ age: { $lt: 65 } }` |
+| `$lte` | Less than or equal | `{ score: { $lte: 100 } }` |
+| `$in` | In array | `{ role: { $in: ['a', 'b'] } }` |
+| `$nin` | Not in array | `{ status: { $nin: ['x', 'y'] } }` |
+
+### Logical
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `$and` | Logical AND | `{ $and: [{a: 1}, {b: 2}] }` |
+| `$or` | Logical OR | `{ $or: [{a: 1}, {b: 2}] }` |
+| `$nor` | Logical NOR | `{ $nor: [{a: 1}, {b: 2}] }` |
+| `$not` | Logical NOT | `{ age: { $not: { $gt: 18 } } }` |
+
+### Element
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `$exists` | Field exists | `{ field: { $exists: true } }` |
+| `$type` | BSON type | `{ field: { $type: 'string' } }` |
+
+### Array
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `$all` | Contains all | `{ tags: { $all: ['a', 'b'] } }` |
+| `$elemMatch` | Element matches | `{ arr: { $elemMatch: {x: 1} } }` |
+| `$size` | Array size | `{ arr: { $size: 3 } }` |
+
+### Evaluation
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `$regex` | Regular expression | `{ name: { $regex: /^J/i } }` |
+| `$mod` | Modulo | `{ id: { $mod: [10, 0] } }` |
+| `$text` | Text search | `{ $text: { $search: 'word' } }` |
+| `$where` | JavaScript expression | `{ $where: 'this.a > this.b' }` |
+
+## Advanced Options
+
+### Collation
+
+Specify language-specific string comparison rules:
+
+```typescript
+User.find()
+  .collation({
+    locale: 'en',
+    strength: 2,  // Case-insensitive
+    numericOrdering: true
+  })
+  .sort({ name: 1 })
+```
+
+### Index Hints
+
+Force use of a specific index:
+
+```typescript
+User.find({ email: 'john@example.com' })
+  .hint({ email: 1 })
+
+User.find({ name: 'John' })
+  .hint('name_1')  // Index name
+```
+
+### Read Preference
+
+Specify which replica set members to read from:
+
+```typescript
+User.find()
+  .read('secondaryPreferred')
+```
+
+### Timeout
+
+Set maximum execution time:
+
+```typescript
+User.find({ status: 'active' })
+  .maxTimeMS(5000)  // 5 second timeout
+```
+
+### Tailable Cursors
+
+For capped collections:
+
+```typescript
+Log.find()
+  .tailable(true, true)  // tailable, awaitData
+  .cursor()
+```
+
+### Allow Disk Use
+
+For large sort operations:
+
+```typescript
+User.find()
+  .sort({ complexField: 1 })
+  .allowDiskUse(true)
+```

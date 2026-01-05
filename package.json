@@ -1,0 +1,55 @@
+{
+  "name": "mondoose",
+  "version": "0.1.0",
+  "description": "Mongoose-compatible ODM for Cloudflare Durable Objects with TypeScript-first $ API",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format esm --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mongoose",
+    "mongodb",
+    "odm",
+    "cloudflare",
+    "durable-objects",
+    "workers",
+    "typescript",
+    "zod",
+    "schema",
+    "validation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nathanclevenger/mondoose"
+  },
+  "peerDependencies": {
+    "mondodb": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  }
+}

@@ -1,0 +1,516 @@
+---
+title: Population
+description: Populate references with full documents, including nested population
+---
+
+# Population
+
+Population is the process of replacing ObjectId references with actual documents from other collections. This is similar to joins in SQL databases.
+
+## Defining References
+
+### In Schema (Mongoose-style)
+
+```typescript
+const postSchema = new Schema({
+  title: String,
+  content: String,
+  author: { type: 'ObjectId', ref: 'User' },  // Single reference
+  reviewers: [{ type: 'ObjectId', ref: 'User' }],  // Array of references
+  comments: [{
+    text: String,
+    user: { type: 'ObjectId', ref: 'User' }
+  }]
+})
+```
+
+### In Schema ($ API)
+
+```typescript
+const postSchema = $.schema({
+  title: $.string().required(),
+  content: $.string(),
+  author: $.objectId().ref('User').required(),
+  reviewers: $.array($.objectId().ref('User')),
+  comments: $.array($.object({
+    text: $.string(),
+    user: $.objectId().ref('User')
+  }))
+})
+```
+
+## Basic Population
+
+### Populate on Query
+
+```typescript
+// Single path
+const post = await Post.findById(id).populate('author')
+
+// Multiple paths
+const post = await Post.findById(id)
+  .populate('author')
+  .populate('reviewers')
+
+// Or as array
+const post = await Post.findById(id).populate(['author', 'reviewers'])
+
+// Space-separated string
+const post = await Post.findById(id).populate('author reviewers')
+```
+
+### Populate After Find
+
+```typescript
+const post = await Post.findById(id)
+
+// Populate on the document
+await post.populate('author')
+await post.populate(['author', 'reviewers'])
+```
+
+## Population Options
+
+### Field Selection
+
+Select which fields to include in populated documents:
+
+```typescript
+// String syntax
+const post = await Post.findById(id)
+  .populate('author', 'name email')
+
+// Object syntax
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    select: 'name email avatar'
+  })
+
+// Exclude fields
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    select: '-password -__v'
+  })
+
+// Object projection
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    select: { name: 1, email: 1 }
+  })
+```
+
+### Filtering (match)
+
+Only populate documents that match certain criteria:
+
+```typescript
+const post = await Post.findById(id)
+  .populate({
+    path: 'comments',
+    match: { approved: true }
+  })
+
+// Complex match
+const user = await User.findById(id)
+  .populate({
+    path: 'posts',
+    match: {
+      status: 'published',
+      publishedAt: { $lte: new Date() }
+    }
+  })
+```
+
+### Query Options
+
+Apply sorting, limits, and other options:
+
+```typescript
+const user = await User.findById(id)
+  .populate({
+    path: 'posts',
+    options: {
+      sort: { createdAt: -1 },
+      limit: 10,
+      skip: 0
+    }
+  })
+
+// Per-document limit
+const users = await User.find()
+  .populate({
+    path: 'posts',
+    perDocumentLimit: 5  // Max 5 posts per user
+  })
+```
+
+### Model Override
+
+Override the model to populate from:
+
+```typescript
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    model: 'AdminUser'  // Use AdminUser instead of User
+  })
+```
+
+### Force Array or Single
+
+Override the schema's array behavior:
+
+```typescript
+// Force single document (even if schema says array)
+.populate({
+  path: 'posts',
+  justOne: true
+})
+
+// Force array (even if schema says single)
+.populate({
+  path: 'author',
+  justOne: false
+})
+```
+
+### Transform
+
+Transform each populated document:
+
+```typescript
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    transform: (doc) => {
+      // Return a modified version
+      return {
+        id: doc._id,
+        displayName: `${doc.firstName} ${doc.lastName}`,
+        avatar: doc.profile?.avatar
+      }
+    }
+  })
+```
+
+### Skip Population
+
+Conditionally skip population:
+
+```typescript
+const shouldPopulate = req.query.include === 'author'
+
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    skip: !shouldPopulate
+  })
+```
+
+## Nested Population
+
+Populate references within populated documents:
+
+```typescript
+// Populate author's organization
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    populate: { path: 'organization' }
+  })
+
+// Multiple nested levels
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    populate: {
+      path: 'organization',
+      populate: { path: 'owner' }
+    }
+  })
+
+// Multiple nested paths
+const post = await Post.findById(id)
+  .populate({
+    path: 'author',
+    populate: [
+      { path: 'organization' },
+      { path: 'manager' }
+    ]
+  })
+
+// With options at each level
+const post = await Post.findById(id)
+  .populate({
+    path: 'comments',
+    match: { approved: true },
+    populate: {
+      path: 'user',
+      select: 'name avatar',
+      populate: {
+        path: 'badge',
+        select: 'name icon'
+      }
+    }
+  })
+```
+
+## Virtual Population
+
+Populate based on custom field relationships (reverse lookups):
+
+### Defining Virtual Populate
+
+```typescript
+const authorSchema = new Schema({
+  name: String,
+  email: String
+})
+
+// Virtual for reverse lookup
+authorSchema.virtual('posts', {
+  ref: 'Post',           // The model to populate
+  localField: '_id',     // Field on Author
+  foreignField: 'author', // Field on Post that references Author
+  justOne: false         // Return array (default)
+})
+
+const Author = model('Author', authorSchema)
+```
+
+### Using Virtual Populate
+
+```typescript
+// Populate the virtual
+const author = await Author.findById(id)
+  .populate('posts')
+
+console.log(author.posts)  // Array of Post documents
+
+// With options
+const author = await Author.findById(id)
+  .populate({
+    path: 'posts',
+    match: { status: 'published' },
+    options: { sort: { createdAt: -1 } }
+  })
+```
+
+### Virtual Populate Options
+
+```typescript
+authorSchema.virtual('posts', {
+  ref: 'Post',
+  localField: '_id',
+  foreignField: 'author',
+  justOne: false,
+  count: true  // Return count instead of documents
+})
+
+// Returns count
+const author = await Author.findById(id).populate('posts')
+console.log(author.posts)  // 42
+```
+
+## Query Population
+
+Populate in any query:
+
+```typescript
+// find()
+const posts = await Post.find({ status: 'published' })
+  .populate('author')
+
+// findOne()
+const post = await Post.findOne({ slug: 'my-post' })
+  .populate('author')
+
+// findOneAndUpdate()
+const post = await Post.findOneAndUpdate(
+  { slug: 'my-post' },
+  { $inc: { views: 1 } },
+  { new: true }
+).populate('author')
+
+// aggregate() - use $lookup instead
+const posts = await Post.aggregate([
+  { $match: { status: 'published' } },
+  { $lookup: {
+    from: 'users',
+    localField: 'author',
+    foreignField: '_id',
+    as: 'author'
+  }},
+  { $unwind: '$author' }
+])
+```
+
+## Population Helpers
+
+### Check if Populated
+
+```typescript
+const post = await Post.findById(id)
+
+// Before population
+post.populated('author')  // undefined
+
+await post.populate('author')
+
+// After population
+post.populated('author')  // ObjectId (the original ID)
+```
+
+### Depopulate
+
+Restore original ObjectId values:
+
+```typescript
+const post = await Post.findById(id).populate('author')
+
+// post.author is a full document
+console.log(post.author.name)
+
+// Depopulate specific path
+post.depopulate('author')
+// post.author is now the ObjectId
+
+// Depopulate all paths
+post.depopulate()
+```
+
+### isPopulated()
+
+Check if a path is currently populated:
+
+```typescript
+import { isPopulated } from 'mondoose'
+
+const post = await Post.findById(id)
+isPopulated(post, 'author')  // false
+
+await post.populate('author')
+isPopulated(post, 'author')  // true
+```
+
+## Lean Population
+
+Population works with lean queries:
+
+```typescript
+const post = await Post.findById(id)
+  .populate('author', 'name email')
+  .lean()
+
+// post and post.author are plain objects
+console.log(post.author.name)  // Works
+post.author.save  // undefined - no methods
+```
+
+## Population Performance
+
+### Batch Optimization
+
+Mondoose automatically batches population queries:
+
+```typescript
+// This executes ONE query to User, not 100
+const posts = await Post.find({ status: 'published' })
+  .limit(100)
+  .populate('author')
+```
+
+### Query Deduplication
+
+Duplicate references are fetched only once:
+
+```typescript
+// If many posts have the same author, that author is fetched once
+const posts = await Post.find()
+  .populate('author')
+```
+
+### Caching
+
+Population uses internal caching per query:
+
+```typescript
+// Same author across different paths uses cached result
+const posts = await Post.find()
+  .populate('author')
+  .populate('editor')  // If same as author, uses cache
+```
+
+## Complex Example
+
+```typescript
+// Get a user's dashboard data with full population
+const user = await User.findById(userId)
+  .populate({
+    path: 'organization',
+    select: 'name logo',
+    populate: {
+      path: 'owner',
+      select: 'name avatar'
+    }
+  })
+  .populate({
+    path: 'posts',
+    match: { status: 'published' },
+    options: { sort: { createdAt: -1 }, limit: 5 },
+    select: 'title excerpt publishedAt',
+    populate: {
+      path: 'comments',
+      match: { approved: true },
+      options: { limit: 3 },
+      select: 'text createdAt',
+      populate: {
+        path: 'user',
+        select: 'name avatar'
+      }
+    }
+  })
+  .populate({
+    path: 'followers',
+    select: 'name avatar',
+    options: { limit: 10 }
+  })
+
+// Result structure:
+// user.organization.name
+// user.organization.owner.name
+// user.posts[0].title
+// user.posts[0].comments[0].text
+// user.posts[0].comments[0].user.name
+// user.followers[0].name
+```
+
+## TypeScript Types
+
+```typescript
+import { PopulatedDoc, ObjectId } from 'mondoose'
+
+interface User {
+  name: string
+  email: string
+}
+
+interface Post {
+  title: string
+  author: ObjectId  // Before population
+  // Or with populate type helper:
+  // author: PopulatedDoc<User>
+}
+
+// Type for populated document
+type PostWithAuthor = Omit<Post, 'author'> & {
+  author: User
+}
+
+// Usage
+const post = await Post.findById(id).populate<PostWithAuthor>('author')
+post.author.name  // TypeScript knows this is User
+```

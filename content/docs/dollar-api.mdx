@@ -1,0 +1,601 @@
+---
+title: $ API
+description: The Zod-style TypeScript-first schema API for Mondoose
+---
+
+# $ API
+
+The `$` API provides a modern, Zod-inspired approach to defining schemas in Mondoose. It offers excellent TypeScript integration with automatic type inference.
+
+## Overview
+
+```typescript
+import { $, model } from 'mondoose'
+
+// Define schema with fluent API
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required(),
+  age: $.number().min(0).max(150),
+  role: $.enum(['admin', 'user', 'guest']).default('user')
+})
+
+// Infer TypeScript type automatically
+type User = $.infer<typeof userSchema>
+// {
+//   name: string
+//   email: string
+//   age?: number
+//   role?: 'admin' | 'user' | 'guest'
+// }
+
+const User = model<User>('User', userSchema)
+```
+
+## Type Builders
+
+### String Type
+
+```typescript
+$.string()
+
+// Validation methods
+$.string().email()        // Email format
+$.string().url()          // Valid URL
+$.string().uuid()         // UUID format
+$.string().regex(/^[A-Z]+$/)  // Custom pattern
+
+// Length constraints
+$.string().min(2)         // Minimum length
+$.string().max(100)       // Maximum length
+$.string().length(10)     // Exact length
+
+// Transforms (applied on cast)
+$.string().trim()         // Trim whitespace
+$.string().lowercase()    // Convert to lowercase
+$.string().uppercase()    // Convert to uppercase
+
+// Common modifiers
+$.string().required()     // Make required
+$.string().default('N/A') // Set default value
+$.string().index()        // Create index
+$.string().unique()       // Create unique index
+```
+
+### Number Type
+
+```typescript
+$.number()
+
+// Range constraints
+$.number().min(0)         // Minimum value
+$.number().max(100)       // Maximum value
+
+// Type constraints
+$.number().int()          // Integer only
+$.number().positive()     // > 0
+$.number().negative()     // < 0
+$.number().finite()       // No Infinity
+
+// Common modifiers
+$.number().required()
+$.number().default(0)
+```
+
+### Boolean Type
+
+```typescript
+$.boolean()
+$.boolean().required()
+$.boolean().default(false)
+```
+
+### Date Type
+
+```typescript
+$.date()
+
+// Range constraints
+$.date().min(new Date('2020-01-01'))  // Minimum date
+$.date().max(new Date())              // Maximum date
+
+// Common modifiers
+$.date().required()
+$.date().default(() => new Date())  // Dynamic default
+```
+
+### ObjectId Type
+
+```typescript
+$.objectId()
+
+// Reference to another model
+$.objectId().ref('User')
+$.objectId().ref('Post').required()
+
+// Example usage
+const postSchema = $.schema({
+  title: $.string().required(),
+  author: $.objectId().ref('User').required(),
+  reviewers: $.array($.objectId().ref('User'))
+})
+```
+
+### BigInt Type
+
+```typescript
+$.bigint()
+$.bigint().required()
+$.bigint().default(BigInt(0))
+```
+
+### Buffer Type
+
+```typescript
+$.buffer()
+$.buffer().required()
+```
+
+## Complex Types
+
+### Array Type
+
+```typescript
+// Basic array
+$.array($.string())
+
+// Array of objects
+$.array($.object({
+  name: $.string(),
+  value: $.number()
+}))
+
+// Array of references
+$.array($.objectId().ref('Tag'))
+
+// Validation
+$.array($.string()).min(1)        // At least 1 element
+$.array($.string()).max(10)       // At most 10 elements
+$.array($.string()).length(5)     // Exactly 5 elements
+$.array($.string()).nonempty()    // Alias for min(1)
+
+// With item validation
+$.array($.number().min(0).max(100))
+```
+
+### Object Type (Nested)
+
+```typescript
+// Nested object
+$.object({
+  street: $.string(),
+  city: $.string(),
+  zipCode: $.string(),
+  country: $.string().default('USA')
+})
+
+// Deeply nested
+$.object({
+  billing: $.object({
+    address: $.object({
+      line1: $.string().required(),
+      line2: $.string(),
+      city: $.string().required()
+    })
+  })
+})
+```
+
+### Map Type
+
+```typescript
+// Map with string keys and typed values
+$.map($.number())  // { [key: string]: number }
+$.map($.string())  // { [key: string]: string }
+
+// Map of objects
+$.map($.object({
+  count: $.number(),
+  lastUpdated: $.date()
+}))
+```
+
+### Enum Type
+
+```typescript
+// String enum
+$.enum(['admin', 'user', 'guest'])
+
+// With default
+$.enum(['pending', 'active', 'inactive']).default('pending')
+
+// Required
+$.enum(['small', 'medium', 'large']).required()
+```
+
+### Literal Type
+
+```typescript
+// Specific value
+$.literal('active')
+$.literal(42)
+$.literal(true)
+
+// Use case: discriminated unions
+const eventSchema = $.schema({
+  type: $.literal('click'),
+  x: $.number(),
+  y: $.number()
+})
+```
+
+### Mixed Type
+
+```typescript
+// Any value (no type checking)
+$.mixed()
+$.any()  // Alias for mixed()
+
+// Useful for dynamic data
+const settingsSchema = $.schema({
+  preferences: $.mixed()  // Can be anything
+})
+```
+
+## Common Modifiers
+
+All types support these modifiers:
+
+### required()
+
+Make a field required:
+
+```typescript
+$.string().required()
+$.number().required()
+$.objectId().ref('User').required()
+```
+
+### default()
+
+Set a default value:
+
+```typescript
+// Static default
+$.string().default('guest')
+$.number().default(0)
+$.boolean().default(true)
+
+// Dynamic default (function)
+$.date().default(() => new Date())
+$.string().default(() => generateId())
+$.array($.string()).default(() => [])
+```
+
+### validate()
+
+Add custom validation:
+
+```typescript
+// Sync validation
+$.string().validate(v => v.startsWith('prefix_'))
+
+// Async validation
+$.string().validate(async (v) => {
+  const exists = await checkExists(v)
+  return !exists
+})
+
+// Multiple validators
+$.string()
+  .validate(v => v.length >= 3)
+  .validate(v => !v.includes(' '))
+  .validate(v => /^[a-z]+$/.test(v))
+```
+
+### index()
+
+Create a database index:
+
+```typescript
+$.string().index()
+$.string().index(true)
+$.string().index(false)  // Explicit no index
+```
+
+### unique()
+
+Create a unique index:
+
+```typescript
+$.string().unique()
+$.string().unique(true)
+```
+
+## Creating Schemas
+
+### $.schema()
+
+Create a schema from type definitions:
+
+```typescript
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required(),
+  profile: $.object({
+    bio: $.string().max(500),
+    avatar: $.string().url(),
+    social: $.map($.string().url())
+  })
+})
+```
+
+### Schema Options
+
+Pass options as the second argument:
+
+```typescript
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().required()
+}, {
+  timestamps: true,
+  versionKey: '__v',
+  strict: true,
+  collection: 'users'
+})
+```
+
+## Type Inference
+
+### $.infer
+
+Extract the TypeScript type from a schema:
+
+```typescript
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().required(),
+  age: $.number(),
+  role: $.enum(['admin', 'user']).default('user')
+})
+
+type User = $.infer<typeof userSchema>
+// {
+//   name: string
+//   email: string
+//   age?: number
+//   role?: 'admin' | 'user'
+// }
+```
+
+### $.input
+
+Get the input type (before transforms):
+
+```typescript
+type UserInput = $.input<typeof userSchema>
+```
+
+### $.output
+
+Get the output type (after transforms):
+
+```typescript
+type UserOutput = $.output<typeof userSchema>
+```
+
+## Type Inference Details
+
+### Required vs Optional
+
+```typescript
+const schema = $.schema({
+  required: $.string().required(),  // string
+  optional: $.string()              // string | undefined
+})
+
+type Data = $.infer<typeof schema>
+// {
+//   required: string
+//   optional?: string
+// }
+```
+
+### With Defaults
+
+```typescript
+const schema = $.schema({
+  status: $.enum(['active', 'inactive']).default('active')
+})
+
+// In the type, it's still optional (can be omitted on create)
+type Data = $.infer<typeof schema>
+// { status?: 'active' | 'inactive' }
+
+// But when reading, it will always have a value
+const doc = await Model.create({})
+doc.status  // 'active' (the default)
+```
+
+### Arrays and Objects
+
+```typescript
+const schema = $.schema({
+  tags: $.array($.string()),
+  address: $.object({
+    city: $.string().required(),
+    zip: $.string()
+  })
+})
+
+type Data = $.infer<typeof schema>
+// {
+//   tags?: string[]
+//   address?: {
+//     city: string
+//     zip?: string
+//   }
+// }
+```
+
+## Complete Example
+
+```typescript
+import { $, model, Document } from 'mondoose'
+
+// Define schema
+const userSchema = $.schema({
+  // Required fields
+  email: $.string().email().required().unique(),
+  username: $.string().min(3).max(20).required().unique(),
+
+  // Optional fields with defaults
+  role: $.enum(['admin', 'moderator', 'user']).default('user'),
+  status: $.enum(['active', 'pending', 'suspended']).default('pending'),
+  createdAt: $.date().default(() => new Date()),
+
+  // Optional fields
+  name: $.string().max(100),
+  age: $.number().min(13).max(120),
+  bio: $.string().max(500),
+
+  // Complex types
+  profile: $.object({
+    avatar: $.string().url(),
+    website: $.string().url(),
+    location: $.string()
+  }),
+
+  // Arrays
+  tags: $.array($.string()).max(10),
+  followers: $.array($.objectId().ref('User')),
+
+  // Map
+  socialLinks: $.map($.string().url()),
+
+  // Reference
+  organization: $.objectId().ref('Organization')
+}, {
+  timestamps: true,
+  versionKey: true
+})
+
+// Infer types
+type User = $.infer<typeof userSchema>
+
+// Create model
+const User = model<User>('User', userSchema)
+
+// Usage with full type safety
+async function createUser(data: Partial<User>) {
+  const user = await User.create({
+    email: data.email!,
+    username: data.username!,
+    name: data.name,
+    profile: {
+      avatar: data.profile?.avatar
+    }
+  })
+
+  return user
+}
+
+// TypeScript knows all the types
+const user = await User.findById(id)
+if (user) {
+  user.email     // string
+  user.username  // string
+  user.role      // 'admin' | 'moderator' | 'user' | undefined
+  user.age       // number | undefined
+  user.profile   // { avatar?: string, website?: string, location?: string } | undefined
+}
+```
+
+## Migration from Mongoose Schema
+
+Convert Mongoose-style schemas to $ API:
+
+```typescript
+// Before (Mongoose-style)
+const userSchema = new Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  age: { type: Number, min: 0 },
+  role: { type: String, enum: ['admin', 'user'], default: 'user' },
+  posts: [{ type: 'ObjectId', ref: 'Post' }]
+})
+
+// After ($ API)
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().required().unique(),
+  age: $.number().min(0),
+  role: $.enum(['admin', 'user']).default('user'),
+  posts: $.array($.objectId().ref('Post'))
+})
+```
+
+## Best Practices
+
+### 1. Define Types First
+
+```typescript
+// Define the shape you want
+interface UserData {
+  name: string
+  email: string
+  age?: number
+}
+
+// Then create a schema that matches
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().required(),
+  age: $.number()
+})
+
+// Verify they match
+type InferredUser = $.infer<typeof userSchema>
+// Should be equivalent to UserData
+```
+
+### 2. Use Type Guards
+
+```typescript
+type User = $.infer<typeof userSchema>
+
+function processUser(user: User) {
+  // age is optional, check before using
+  if (user.age !== undefined) {
+    console.log(`Age: ${user.age}`)
+  }
+
+  // Or use nullish coalescing
+  const age = user.age ?? 'unknown'
+}
+```
+
+### 3. Compose Schemas
+
+```typescript
+// Reusable field definitions
+const emailField = $.string().email().required()
+const timestampFields = {
+  createdAt: $.date().default(() => new Date()),
+  updatedAt: $.date()
+}
+
+// Compose into schemas
+const userSchema = $.schema({
+  email: emailField,
+  name: $.string().required(),
+  ...timestampFields
+})
+
+const postSchema = $.schema({
+  authorEmail: emailField,
+  title: $.string().required(),
+  ...timestampFields
+})
+```

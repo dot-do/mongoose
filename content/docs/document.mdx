@@ -1,0 +1,510 @@
+---
+title: Document
+description: Working with documents - change tracking, saving, validation, and more
+---
+
+# Document
+
+Documents are instances of Models. They represent individual records in your database and provide methods for modifying, validating, and persisting data.
+
+## Creating Documents
+
+### Using `new Model()`
+
+```typescript
+const user = new User({
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: 30
+})
+
+console.log(user.isNew)  // true - not yet saved
+
+await user.save()
+
+console.log(user.isNew)  // false - now saved
+```
+
+### Using `Model.create()`
+
+```typescript
+// Create and save in one step
+const user = await User.create({
+  name: 'John Doe',
+  email: 'john@example.com'
+})
+```
+
+### Using `Model.hydrate()`
+
+Create a document from an existing plain object (e.g., from cache):
+
+```typescript
+const plainObject = {
+  _id: '507f1f77bcf86cd799439011',
+  name: 'John',
+  email: 'john@example.com'
+}
+
+const user = User.hydrate(plainObject)
+user.isNew  // false - treated as existing document
+```
+
+## Accessing Properties
+
+### Direct Access
+
+```typescript
+// Read properties
+console.log(user.name)
+console.log(user.email)
+
+// Write properties
+user.name = 'Jane Doe'
+user.age = 25
+
+// Nested properties
+console.log(user.address.city)
+user.address.zipCode = '12345'
+```
+
+### Using `get()` and `set()`
+
+```typescript
+// get() - supports dot notation
+const city = user.get('address.city')
+const age = user.get('age')
+
+// set() - single value
+user.set('name', 'John Smith')
+user.set('address.city', 'New York')
+
+// set() - multiple values
+user.set({
+  name: 'John Smith',
+  age: 31,
+  'address.city': 'New York'
+})
+```
+
+### Shorthand Methods
+
+```typescript
+// $get() / $set() - aliases
+const name = user.$get('name')
+user.$set('name', 'John')
+
+// $has() - check if path exists
+if (user.$has('profile.avatar')) {
+  console.log('User has avatar')
+}
+
+// $unset() - remove path
+user.$unset('temporaryField')
+user.$unset(['field1', 'field2'])
+
+// $inc() - increment number
+user.$inc('loginCount')      // +1
+user.$inc('points', 10)      // +10
+user.$inc('balance', -5)     // -5
+```
+
+## Change Tracking
+
+Mondoose automatically tracks which fields have been modified.
+
+### Checking for Changes
+
+```typescript
+// Check if any field is modified
+if (user.isModified()) {
+  console.log('Document has changes')
+}
+
+// Check specific path
+if (user.isModified('email')) {
+  console.log('Email was changed')
+}
+
+// Check multiple paths
+if (user.isModified(['name', 'email'])) {
+  console.log('Name or email was changed')
+}
+```
+
+### Getting Modified Paths
+
+```typescript
+// Get all modified paths
+const modified = user.modifiedPaths()
+// ['name', 'address']
+
+// Include nested paths
+const allModified = user.modifiedPaths({ includeChildren: true })
+// ['name', 'address', 'address.city', 'address.zipCode']
+
+// Get directly modified paths (not parent paths)
+const direct = user.directModifiedPaths()
+// ['address.city'] - not 'address'
+```
+
+### Manual Change Tracking
+
+```typescript
+// Mark a path as modified (useful for mixed types)
+user.data = { ...user.data, newKey: 'value' }
+user.markModified('data')
+
+// Unmark a path
+user.unmarkModified('data')
+```
+
+### Resetting Changes
+
+```typescript
+// Reset all modifications to original values
+user.$reset()
+
+// Clone the document
+const clone = user.$clone()
+```
+
+## Saving Documents
+
+### Basic Save
+
+```typescript
+const user = new User({ name: 'John' })
+await user.save()
+```
+
+### Save Options
+
+```typescript
+await user.save({
+  validateBeforeSave: true,  // Run validation (default: true)
+  session: clientSession     // For transactions
+})
+```
+
+### What Happens on Save
+
+1. Pre-save middleware runs
+2. Validation runs (if enabled)
+3. Document is inserted (new) or updated (existing)
+4. Modified paths are cleared
+5. Post-save middleware runs
+
+```typescript
+const user = new User({ name: 'John', email: 'john@example.com' })
+
+console.log(user.isNew)  // true
+
+await user.save()
+
+console.log(user.isNew)  // false
+console.log(user.isModified())  // false
+console.log(user._id)  // Now has an _id
+```
+
+## Validation
+
+### Automatic Validation
+
+Validation runs automatically before save:
+
+```typescript
+const user = new User({
+  name: 'J',  // Too short if minLength: 2
+  email: 'invalid-email'
+})
+
+try {
+  await user.save()
+} catch (error) {
+  console.log(error.errors)
+  // Map with validation errors per path
+}
+```
+
+### Manual Validation
+
+```typescript
+// Validate entire document
+try {
+  await user.validate()
+} catch (error) {
+  console.log('Validation failed:', error.message)
+}
+
+// Validate specific paths
+await user.validate(['email', 'age'])
+
+// Synchronous validation (for sync validators only)
+const errors = user.validateSync()
+if (errors) {
+  console.log(errors)
+}
+```
+
+### Accessing Errors
+
+```typescript
+// After failed validation
+const errors = user.errors
+
+if (errors) {
+  for (const [path, error] of errors) {
+    console.log(`${path}: ${error.message}`)
+  }
+}
+```
+
+## Deleting Documents
+
+### Instance Methods
+
+```typescript
+// Delete the document
+await user.deleteOne()
+
+// Alias (deprecated but supported)
+await user.remove()
+
+// With options
+await user.deleteOne({ session: clientSession })
+```
+
+### Checking Deletion
+
+```typescript
+// Check if marked as deleted
+console.log(user.$isDeleted)  // boolean
+
+// Mark as deleted (without database operation)
+user.$markDeleted()
+user.$markDeleted(true)   // Mark as deleted
+user.$markDeleted(false)  // Unmark
+
+// Check if was deleted
+console.log(user.$wasDeleted())
+```
+
+## Updating Documents
+
+### Direct Updates
+
+```typescript
+// Using instance methods
+user.name = 'New Name'
+await user.save()
+
+// Using updateOne on instance
+await user.updateOne({ $set: { name: 'New Name' } })
+
+// Overwrite entire document
+user.overwrite({ name: 'Only this field', email: 'new@example.com' })
+await user.save()
+
+// Replace with
+user.$replaceWith({ name: 'Replacement', email: 'new@example.com' })
+```
+
+## Converting Documents
+
+### toObject()
+
+Convert to a plain JavaScript object:
+
+```typescript
+const obj = user.toObject()
+
+// With options
+const obj = user.toObject({
+  virtuals: true,     // Include virtual properties
+  getters: true,      // Apply getters
+  versionKey: false,  // Exclude __v
+  depopulate: true,   // Replace populated docs with IDs
+  minimize: true,     // Remove empty objects
+  flattenMaps: true,  // Convert Maps to objects
+  transform: (doc, ret, options) => {
+    delete ret.password
+    ret.id = ret._id.toString()
+    return ret
+  }
+})
+```
+
+### toJSON()
+
+Convert for JSON serialization (used by JSON.stringify):
+
+```typescript
+const json = user.toJSON()
+
+// Automatically called by JSON.stringify
+const jsonString = JSON.stringify(user)
+
+// With options (same as toObject)
+const json = user.toJSON({ virtuals: true })
+```
+
+## Document Properties
+
+### Identity
+
+```typescript
+// MongoDB ObjectId
+user._id  // ObjectId
+
+// String version
+user.id   // string (virtual)
+```
+
+### Schema Reference
+
+```typescript
+// Get the schema
+user.schema
+
+// Get the model name
+user.modelName  // 'User'
+
+// Get the collection
+user.collection
+
+// Get the database
+user.db
+```
+
+### Internal State
+
+```typescript
+// Internal state object (use with caution)
+user.$__
+
+// Check if path is selected (in projection)
+user.isSelected('email')
+
+// Check if path is initialized
+user.isInit('email')
+```
+
+## Comparing Documents
+
+```typescript
+const user1 = await User.findById(id1)
+const user2 = await User.findById(id2)
+
+// Compare by _id
+if (user1.equals(user2)) {
+  console.log('Same user')
+}
+
+// Works with plain objects too
+if (user1.equals({ _id: id1 })) {
+  console.log('Same user')
+}
+```
+
+## Sessions and Transactions
+
+```typescript
+// Get current session
+const session = user.$session()
+
+// Set session
+user.$session(clientSession)
+
+// Chain with save
+user.name = 'New Name'
+user.$session(session)
+await user.save()
+
+// Or pass to save
+await user.save({ session })
+```
+
+## Population
+
+### Populate After Find
+
+```typescript
+const user = await User.findById(id)
+await user.populate('posts')
+await user.populate(['posts', 'friends'])
+await user.populate({
+  path: 'posts',
+  select: 'title',
+  match: { published: true }
+})
+```
+
+### Check Population
+
+```typescript
+// Check if path is populated
+const postIds = user.populated('posts')
+
+if (postIds) {
+  console.log('Posts populated, original IDs:', postIds)
+}
+```
+
+### Depopulate
+
+```typescript
+// Restore original ObjectIds
+user.depopulate('posts')  // Specific path
+user.depopulate()         // All paths
+```
+
+## Parent Documents
+
+For subdocuments (embedded documents):
+
+```typescript
+const commentSchema = new Schema({ text: String })
+const postSchema = new Schema({
+  comments: [commentSchema]
+})
+
+// Get parent document
+const comment = post.comments[0]
+const parentPost = comment.parent()
+
+// Get root document (for deeply nested)
+const root = comment.$root()
+```
+
+## Document Inspection
+
+```typescript
+// For console.log
+console.log(user.inspect())
+
+// Custom inspect for Node.js
+console.log(user)  // Automatically uses toObject()
+```
+
+## TypeScript Types
+
+```typescript
+import { Document } from 'mondoose'
+
+// Document type with your data
+interface UserData {
+  name: string
+  email: string
+  age?: number
+}
+
+// Full document type (includes Document methods)
+type UserDocument = Document<UserData> & UserData
+
+// Usage
+const user: UserDocument = new User({ name: 'John', email: 'john@example.com' })
+user.name  // string - from UserData
+user.save  // () => Promise<this> - from Document
+user.isModified  // (path?: string) => boolean - from Document
+```

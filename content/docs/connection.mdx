@@ -1,0 +1,344 @@
+---
+title: Connection
+description: Connect Mondoose to MongoDB via Cloudflare Durable Objects
+---
+
+# Connection
+
+Mondoose is designed for Cloudflare Workers with Durable Objects. It provides a connection adapter that works with `mondodb` (MongoDB-compatible API for Durable Objects).
+
+## Basic Setup
+
+### Cloudflare Workers
+
+```typescript
+// worker.ts
+import { createMondoose } from 'mondoose'
+import { userSchema, postSchema } from './schemas'
+
+interface Env {
+  MONDODB: DurableObjectNamespace
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    // Create mondoose instance with Worker environment
+    const mondoose = createMondoose(env)
+
+    // Register models
+    const User = mondoose.model('User', userSchema)
+    const Post = mondoose.model('Post', postSchema)
+
+    // Use models
+    const users = await User.find({ role: 'admin' })
+    return Response.json(users)
+  }
+}
+```
+
+### wrangler.toml
+
+```toml
+name = "my-app"
+main = "src/worker.ts"
+
+[[durable_objects.bindings]]
+name = "MONDODB"
+class_name = "MondoDB"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["MondoDB"]
+```
+
+## Connection Options
+
+```typescript
+const mondoose = createMondoose(env, {
+  // Database name (default: 'default')
+  database: 'myapp',
+
+  // Auto-create indexes on model registration
+  autoIndex: true,
+
+  // Buffer commands until connected
+  bufferCommands: true,
+
+  // Strict mode for schemas
+  strict: true
+})
+```
+
+## Model Registration
+
+### Using createMondoose
+
+```typescript
+const mondoose = createMondoose(env)
+
+// Register with schema
+const User = mondoose.model('User', userSchema)
+
+// Register with options
+const Post = mondoose.model('Post', postSchema, {
+  collection: 'articles'  // Override collection name
+})
+```
+
+### Global Model Registration
+
+For simpler cases without per-request instances:
+
+```typescript
+import { model, Schema } from 'mondoose'
+
+const userSchema = new Schema({ name: String })
+const User = model('User', userSchema)
+
+// Use in handler
+export default {
+  async fetch(request: Request, env: Env) {
+    // Models use global connection
+    const users = await User.find()
+    return Response.json(users)
+  }
+}
+```
+
+## Connection Management
+
+### Get Connection
+
+```typescript
+const mondoose = createMondoose(env)
+
+// Get the underlying connection
+const connection = mondoose.connection
+```
+
+### Connection Events
+
+```typescript
+mondoose.connection.on('connected', () => {
+  console.log('Connected to database')
+})
+
+mondoose.connection.on('error', (err) => {
+  console.error('Connection error:', err)
+})
+
+mondoose.connection.on('disconnected', () => {
+  console.log('Disconnected from database')
+})
+```
+
+## Multiple Databases
+
+```typescript
+// Create multiple connections for different databases
+const userDb = createMondoose(env, { database: 'users' })
+const analyticsDb = createMondoose(env, { database: 'analytics' })
+
+// Register models to specific databases
+const User = userDb.model('User', userSchema)
+const Event = analyticsDb.model('Event', eventSchema)
+```
+
+## Model Management
+
+```typescript
+import { model, getModel, hasModel, deleteModel, modelNames } from 'mondoose'
+
+// Check if model exists
+if (hasModel('User')) {
+  const User = getModel('User')
+}
+
+// Get all registered model names
+const names = modelNames()  // ['User', 'Post', ...]
+
+// Delete a model (useful for testing)
+deleteModel('User')
+
+// Delete all models
+modelNames().forEach(name => deleteModel(name))
+```
+
+## Transactions
+
+Mondoose supports transactions via sessions:
+
+```typescript
+const session = await mondoose.startSession()
+
+try {
+  session.startTransaction()
+
+  const user = await User.create([{ name: 'John' }], { session })
+  const post = await Post.create([{
+    title: 'Hello',
+    author: user[0]._id
+  }], { session })
+
+  await session.commitTransaction()
+} catch (error) {
+  await session.abortTransaction()
+  throw error
+} finally {
+  session.endSession()
+}
+```
+
+### Transaction Helper
+
+```typescript
+await mondoose.connection.transaction(async (session) => {
+  const user = await User.create([{ name: 'John' }], { session })
+  const post = await Post.create([{
+    title: 'Hello',
+    author: user[0]._id
+  }], { session })
+
+  // Auto-commits on success, aborts on error
+})
+```
+
+## Health Checks
+
+```typescript
+// Check connection status
+const isConnected = mondoose.connection.readyState === 1
+
+// Ping the database
+try {
+  await mondoose.connection.db.admin().ping()
+  console.log('Database is healthy')
+} catch (error) {
+  console.error('Database health check failed')
+}
+```
+
+## Worker Patterns
+
+### Request-scoped Models
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env) {
+    // Create fresh mondoose per request
+    const mondoose = createMondoose(env)
+    const User = mondoose.model('User', userSchema)
+
+    const users = await User.find()
+    return Response.json(users)
+  }
+}
+```
+
+### Shared Models with Context
+
+```typescript
+// schemas.ts
+export const userSchema = new Schema({ name: String })
+export const postSchema = new Schema({ title: String })
+
+// worker.ts
+export default {
+  async fetch(request: Request, env: Env) {
+    const mondoose = createMondoose(env)
+
+    // Models are cached per mondoose instance
+    const User = mondoose.model('User', userSchema)
+    const Post = mondoose.model('Post', postSchema)
+
+    // ... use models
+  }
+}
+```
+
+## TypeScript Configuration
+
+```typescript
+// types.ts
+import type { Schema } from 'mondoose'
+
+// Environment types
+interface Env {
+  MONDODB: DurableObjectNamespace
+  // Add other bindings
+}
+
+// Schema types
+interface UserDoc {
+  name: string
+  email: string
+  createdAt: Date
+}
+
+const userSchema = new Schema<UserDoc>({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+})
+```
+
+## Best Practices
+
+### 1. Define Schemas Once
+
+```typescript
+// schemas/user.ts
+export const userSchema = new Schema({
+  name: String,
+  email: String
+})
+
+// worker.ts
+import { userSchema } from './schemas/user'
+
+const User = mondoose.model('User', userSchema)
+```
+
+### 2. Use Environment Variables
+
+```typescript
+const mondoose = createMondoose(env, {
+  database: env.DATABASE_NAME || 'production'
+})
+```
+
+### 3. Handle Errors Gracefully
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env) {
+    try {
+      const mondoose = createMondoose(env)
+      const User = mondoose.model('User', userSchema)
+
+      const users = await User.find()
+      return Response.json(users)
+    } catch (error) {
+      console.error('Database error:', error)
+      return new Response('Internal Server Error', { status: 500 })
+    }
+  }
+}
+```
+
+### 4. Optimize for Cold Starts
+
+```typescript
+// Keep schema definitions outside handler
+const userSchema = new Schema({ name: String })
+
+export default {
+  async fetch(request: Request, env: Env) {
+    // Only create mondoose and register models inside handler
+    const mondoose = createMondoose(env)
+    const User = mondoose.model('User', userSchema)
+
+    // ...
+  }
+}
+```

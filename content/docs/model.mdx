@@ -1,0 +1,566 @@
+---
+title: Model
+description: CRUD operations, static methods, and model management with Mondoose
+---
+
+# Model
+
+Models are constructors compiled from Schema definitions. They provide the interface for interacting with the database, including CRUD operations, querying, and aggregation.
+
+## Creating Models
+
+```typescript
+import { Schema, model } from 'mondoose'
+
+const userSchema = new Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  age: Number
+})
+
+// Create a model
+const User = model('User', userSchema)
+
+// With collection name override
+const User = model('User', userSchema, { collection: 'people' })
+```
+
+### Using the $ API
+
+```typescript
+import { $, model } from 'mondoose'
+
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required(),
+  age: $.number()
+})
+
+type User = $.infer<typeof userSchema>
+
+const User = model<User>('User', userSchema)
+```
+
+## Creating Documents
+
+### `create(doc)` / `create(docs[])`
+
+Create and save one or more documents:
+
+```typescript
+// Create single document
+const user = await User.create({
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: 30
+})
+
+// Create multiple documents
+const users = await User.create([
+  { name: 'John', email: 'john@example.com' },
+  { name: 'Jane', email: 'jane@example.com' }
+])
+```
+
+### `insertMany(docs, options)`
+
+Insert multiple documents with options:
+
+```typescript
+const users = await User.insertMany([
+  { name: 'User 1', email: 'user1@example.com' },
+  { name: 'User 2', email: 'user2@example.com' },
+  { name: 'User 3', email: 'user3@example.com' }
+], {
+  ordered: true,      // Stop on first error (default: true)
+  rawResult: false,   // Return raw result (default: false)
+  lean: false         // Return plain objects (default: false)
+})
+```
+
+### Using `new Model()`
+
+Create a document instance without saving:
+
+```typescript
+const user = new User({
+  name: 'John Doe',
+  email: 'john@example.com'
+})
+
+// Modify before saving
+user.age = 30
+
+// Save to database
+await user.save()
+```
+
+## Reading Documents
+
+### `find(filter, projection, options)`
+
+Find all documents matching a filter:
+
+```typescript
+// Find all
+const allUsers = await User.find()
+
+// Find with filter
+const adults = await User.find({ age: { $gte: 18 } })
+
+// With projection
+const names = await User.find({}, { name: 1, email: 1 })
+const noPasswords = await User.find({}, { password: 0 })
+
+// With options
+const topUsers = await User.find(
+  { role: 'admin' },
+  null,
+  { sort: { createdAt: -1 }, limit: 10 }
+)
+```
+
+### `findOne(filter, projection, options)`
+
+Find a single document:
+
+```typescript
+const user = await User.findOne({ email: 'john@example.com' })
+
+if (user) {
+  console.log(user.name)
+}
+```
+
+### `findById(id, projection, options)`
+
+Find a document by its `_id`:
+
+```typescript
+const user = await User.findById('507f1f77bcf86cd799439011')
+
+// Shorthand for
+const user = await User.findOne({ _id: '507f1f77bcf86cd799439011' })
+```
+
+### `exists(filter)`
+
+Check if any document matches the filter:
+
+```typescript
+const exists = await User.exists({ email: 'john@example.com' })
+
+if (exists) {
+  console.log('User exists with id:', exists._id)
+}
+```
+
+### `countDocuments(filter)`
+
+Count documents matching a filter:
+
+```typescript
+const count = await User.countDocuments({ role: 'admin' })
+console.log(`There are ${count} admins`)
+```
+
+### `estimatedDocumentCount()`
+
+Get an estimated count (faster for large collections):
+
+```typescript
+const estimate = await User.estimatedDocumentCount()
+```
+
+### `distinct(field, filter)`
+
+Get distinct values for a field:
+
+```typescript
+const roles = await User.distinct('role')
+// ['admin', 'user', 'guest']
+
+const activeRoles = await User.distinct('role', { status: 'active' })
+```
+
+## Updating Documents
+
+### `updateOne(filter, update, options)`
+
+Update a single document:
+
+```typescript
+const result = await User.updateOne(
+  { email: 'john@example.com' },
+  { $set: { name: 'John Smith' } }
+)
+
+console.log(result.modifiedCount)  // 1
+console.log(result.matchedCount)   // 1
+```
+
+### `updateMany(filter, update, options)`
+
+Update multiple documents:
+
+```typescript
+const result = await User.updateMany(
+  { role: 'guest' },
+  { $set: { role: 'user' } }
+)
+
+console.log(`Updated ${result.modifiedCount} users`)
+```
+
+### `findOneAndUpdate(filter, update, options)`
+
+Find, update, and return the document:
+
+```typescript
+// Return the updated document
+const user = await User.findOneAndUpdate(
+  { email: 'john@example.com' },
+  { $set: { lastLogin: new Date() } },
+  { new: true }  // Return updated doc (default: false returns original)
+)
+
+// With upsert
+const user = await User.findOneAndUpdate(
+  { email: 'new@example.com' },
+  { $set: { name: 'New User' } },
+  { upsert: true, new: true }
+)
+```
+
+### `findByIdAndUpdate(id, update, options)`
+
+Find by ID, update, and return:
+
+```typescript
+const user = await User.findByIdAndUpdate(
+  '507f1f77bcf86cd799439011',
+  { $inc: { loginCount: 1 } },
+  { new: true }
+)
+```
+
+### `replaceOne(filter, replacement, options)`
+
+Replace an entire document:
+
+```typescript
+const result = await User.replaceOne(
+  { email: 'john@example.com' },
+  { name: 'John Doe', email: 'john@example.com', age: 31 }
+)
+```
+
+### Update Operators
+
+```typescript
+// $set - Set field values
+{ $set: { name: 'John', age: 30 } }
+
+// $unset - Remove fields
+{ $unset: { temporaryField: 1 } }
+
+// $inc - Increment numbers
+{ $inc: { loginCount: 1, balance: -10 } }
+
+// $push - Add to arrays
+{ $push: { tags: 'new-tag' } }
+{ $push: { tags: { $each: ['tag1', 'tag2'] } } }
+
+// $pull - Remove from arrays
+{ $pull: { tags: 'old-tag' } }
+
+// $addToSet - Add unique values to arrays
+{ $addToSet: { tags: 'unique-tag' } }
+
+// $pop - Remove first/last array element
+{ $pop: { queue: 1 } }   // Remove last
+{ $pop: { queue: -1 } }  // Remove first
+
+// $rename - Rename fields
+{ $rename: { oldField: 'newField' } }
+```
+
+## Deleting Documents
+
+### `deleteOne(filter, options)`
+
+Delete a single document:
+
+```typescript
+const result = await User.deleteOne({ email: 'john@example.com' })
+console.log(result.deletedCount)  // 1
+```
+
+### `deleteMany(filter, options)`
+
+Delete multiple documents:
+
+```typescript
+const result = await User.deleteMany({ role: 'guest' })
+console.log(`Deleted ${result.deletedCount} guests`)
+
+// Delete all
+await User.deleteMany({})
+```
+
+### `findOneAndDelete(filter, options)`
+
+Find, delete, and return the document:
+
+```typescript
+const deletedUser = await User.findOneAndDelete({ email: 'john@example.com' })
+console.log('Deleted:', deletedUser.name)
+```
+
+### `findByIdAndDelete(id, options)`
+
+Find by ID, delete, and return:
+
+```typescript
+const deletedUser = await User.findByIdAndDelete('507f1f77bcf86cd799439011')
+```
+
+## Bulk Operations
+
+### `bulkWrite(operations, options)`
+
+Perform multiple operations in one call:
+
+```typescript
+const result = await User.bulkWrite([
+  {
+    insertOne: {
+      document: { name: 'New User', email: 'new@example.com' }
+    }
+  },
+  {
+    updateOne: {
+      filter: { email: 'john@example.com' },
+      update: { $set: { role: 'admin' } }
+    }
+  },
+  {
+    updateMany: {
+      filter: { status: 'pending' },
+      update: { $set: { status: 'active' } }
+    }
+  },
+  {
+    deleteOne: {
+      filter: { email: 'delete@example.com' }
+    }
+  },
+  {
+    replaceOne: {
+      filter: { email: 'replace@example.com' },
+      replacement: { name: 'Replaced', email: 'replace@example.com' }
+    }
+  }
+], {
+  ordered: true  // Stop on first error (default: true)
+})
+
+console.log({
+  insertedCount: result.insertedCount,
+  matchedCount: result.matchedCount,
+  modifiedCount: result.modifiedCount,
+  deletedCount: result.deletedCount,
+  upsertedCount: result.upsertedCount
+})
+```
+
+## Aggregation
+
+### `aggregate(pipeline)`
+
+Build aggregation pipelines:
+
+```typescript
+const results = await User.aggregate([
+  { $match: { status: 'active' } },
+  { $group: { _id: '$role', count: { $sum: 1 } } },
+  { $sort: { count: -1 } }
+])
+```
+
+Using the fluent builder:
+
+```typescript
+const results = await User.aggregate()
+  .match({ status: 'active' })
+  .group({ _id: '$role', count: { $sum: 1 }, avgAge: { $avg: '$age' } })
+  .sort({ count: -1 })
+  .limit(10)
+
+// Available pipeline stages
+.match(filter)
+.group(spec)
+.sort(order)
+.limit(n)
+.skip(n)
+.project(spec)
+.unwind(path)
+.lookup({ from, localField, foreignField, as })
+.addFields(fields)
+.count(fieldName)
+.facet(spec)
+```
+
+## Model Utilities
+
+### Hydration
+
+Create a document instance from a plain object:
+
+```typescript
+// Plain object (e.g., from cache)
+const plainUser = { _id: '...', name: 'John', email: 'john@example.com' }
+
+// Hydrate into a Mondoose document
+const user = User.hydrate(plainUser)
+
+// Now has document methods
+user.name = 'John Smith'
+await user.save()
+```
+
+### Model Management
+
+```typescript
+import { model, getModel, hasModel, deleteModel, modelNames } from 'mondoose'
+
+// Check if model exists
+if (hasModel('User')) {
+  const User = getModel('User')
+}
+
+// Get all model names
+const names = modelNames()  // ['User', 'Post', 'Comment']
+
+// Delete a model (useful for testing)
+deleteModel('User')
+```
+
+### Index Management
+
+```typescript
+// Create indexes defined in schema
+await User.createIndexes()
+
+// Alias for createIndexes
+await User.ensureIndexes()
+
+// Sync indexes (create missing, drop extra)
+const droppedIndexes = await User.syncIndexes()
+
+// List all indexes
+const indexes = await User.listIndexes()
+```
+
+## Discriminators
+
+Create model inheritance with discriminators:
+
+```typescript
+const eventSchema = new Schema({
+  timestamp: Date,
+  message: String
+}, { discriminatorKey: 'type' })
+
+const Event = model('Event', eventSchema)
+
+// Create discriminator models
+const ClickEvent = Event.discriminator('ClickEvent', new Schema({
+  element: String,
+  coordinates: { x: Number, y: Number }
+}))
+
+const PurchaseEvent = Event.discriminator('PurchaseEvent', new Schema({
+  product: String,
+  amount: Number
+}))
+
+// Usage
+await ClickEvent.create({
+  timestamp: new Date(),
+  message: 'Button clicked',
+  element: '#submit-btn',
+  coordinates: { x: 100, y: 200 }
+})
+
+// Queries on base model return all types
+const allEvents = await Event.find()
+
+// Queries on discriminator return only that type
+const clicks = await ClickEvent.find()
+```
+
+## Static Methods
+
+Define custom static methods on your model:
+
+```typescript
+const userSchema = new Schema({
+  email: String,
+  role: String,
+  status: String
+})
+
+userSchema.static({
+  async findActiveAdmins() {
+    return this.find({ role: 'admin', status: 'active' })
+  },
+
+  async createWithDefaults(data: Partial<User>) {
+    return this.create({
+      status: 'pending',
+      role: 'user',
+      ...data
+    })
+  },
+
+  async softDelete(id: string) {
+    return this.findByIdAndUpdate(id, {
+      $set: { status: 'deleted', deletedAt: new Date() }
+    })
+  }
+})
+
+const User = model('User', userSchema)
+
+// Use static methods
+const admins = await User.findActiveAdmins()
+const user = await User.createWithDefaults({ email: 'new@example.com' })
+await User.softDelete(userId)
+```
+
+## Change Streams
+
+Watch for real-time changes:
+
+```typescript
+const changeStream = User.watch([
+  { $match: { operationType: 'insert' } }
+])
+
+changeStream.on('change', (change) => {
+  console.log('New user:', change.fullDocument)
+})
+
+changeStream.on('error', (error) => {
+  console.error('Watch error:', error)
+})
+
+// Async iteration
+for await (const change of changeStream) {
+  console.log(change.operationType, change.documentKey)
+}
+
+// Close when done
+await changeStream.close()
+```

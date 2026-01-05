@@ -1,0 +1,154 @@
+---
+title: Getting Started
+description: Install and configure Mondoose for your Cloudflare Workers project
+---
+
+# Getting Started
+
+Mondoose is a Mongoose-compatible ODM for Cloudflare Durable Objects. It provides two APIs:
+- **$ API** - A modern, Zod-style TypeScript-first API (recommended for new projects)
+- **Schema/Model API** - Mongoose-compatible API for easy migration
+
+## Installation
+
+```bash
+npm install mondoose mondodb
+```
+
+## Quick Start
+
+### Using the $ API (Recommended)
+
+The `$` API provides a fluent, type-safe way to define schemas:
+
+```typescript
+import { $, model, createMondoose } from 'mondoose'
+
+// Define a schema using the $ API
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required(),
+  age: $.number().min(0).max(150),
+  role: $.enum(['admin', 'user', 'guest']).default('user'),
+  posts: $.array($.objectId().ref('Post'))
+})
+
+// Infer the TypeScript type
+type User = $.infer<typeof userSchema>
+
+// Create the model
+const User = model('User', userSchema)
+```
+
+### Using the Mongoose API
+
+For projects migrating from Mongoose, the traditional API is fully supported:
+
+```typescript
+import { Schema, model } from 'mondoose'
+
+const userSchema = new Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  age: { type: Number, min: 0, max: 150 },
+  role: { type: String, enum: ['admin', 'user', 'guest'], default: 'user' },
+  posts: [{ type: 'ObjectId', ref: 'Post' }]
+}, {
+  timestamps: true
+})
+
+const User = model('User', userSchema)
+```
+
+## Cloudflare Workers Integration
+
+Mondoose is designed specifically for Cloudflare Workers with Durable Objects:
+
+```typescript
+// worker.ts
+import { createMondoose } from 'mondoose'
+import { userSchema, postSchema } from './schemas'
+
+interface Env {
+  MONDODB: DurableObjectNamespace
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    // Create a mondoose instance with the Worker environment
+    const mondoose = createMondoose(env)
+
+    // Register models
+    const User = mondoose.model('User', userSchema)
+    const Post = mondoose.model('Post', postSchema)
+
+    // Use the models
+    const users = await User.find({ role: 'admin' })
+
+    return Response.json(users)
+  }
+}
+```
+
+## Basic CRUD Operations
+
+Once you have a model, you can perform standard CRUD operations:
+
+```typescript
+// Create
+const user = await User.create({
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: 30
+})
+
+// Read
+const users = await User.find({ age: { $gte: 18 } })
+const user = await User.findById('507f1f77bcf86cd799439011')
+const admin = await User.findOne({ role: 'admin' })
+
+// Update
+await User.updateOne(
+  { email: 'john@example.com' },
+  { $set: { name: 'John Smith' } }
+)
+
+// Delete
+await User.deleteOne({ email: 'john@example.com' })
+```
+
+## TypeScript Support
+
+Mondoose is built with TypeScript and provides excellent type inference:
+
+```typescript
+import { $, model, Document } from 'mondoose'
+
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required(),
+  age: $.number()
+})
+
+// Infer the document type
+type User = $.infer<typeof userSchema>
+
+// Create the model with type parameter
+const User = model<User>('User', userSchema)
+
+// Full type safety
+const user = await User.findById(id)
+if (user) {
+  console.log(user.name)  // string
+  console.log(user.email) // string
+  console.log(user.age)   // number | undefined
+}
+```
+
+## Next Steps
+
+- Learn about [Schema](/docs/schema) definitions and validation
+- Explore the [$ API](/docs/dollar-api) for TypeScript-first schemas
+- Understand [Models](/docs/model) and CRUD operations
+- Master [Queries](/docs/query) with the chainable query builder
+- Set up [Connections](/docs/connection) for your Worker environment
