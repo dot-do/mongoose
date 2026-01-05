@@ -1,17 +1,14 @@
 {
-  "name": "payload-cloudflare-example",
+  "name": "mondoo-demo",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "build": "wrangler deploy --dry-run",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run"
   },
   "dependencies": {
-    "mondoo": "file:../..",
     "hono": "^4.0.0"
   },
   "devDependencies": {
