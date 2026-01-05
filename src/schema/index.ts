@@ -124,6 +124,9 @@ interface VirtualType<T = any> {
 // ============ Schema Class ============
 
 export class Schema<T = any> {
+  /** Static Types property for Mongoose compatibility (e.g., Schema.Types.ObjectId) */
+  static Types = Types
+
   private _definition: SchemaDefinition
   private _options: SchemaOptions
   private _paths: Map<string, SchemaType<any, any>> = new Map()
