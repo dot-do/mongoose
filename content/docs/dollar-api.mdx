@@ -1,16 +1,16 @@
 ---
 title: $ API
-description: The Zod-style TypeScript-first schema API for Mondoo
+description: The Zod-style TypeScript-first schema API for Mongoose.do
 ---
 
 # $ API
 
-The `$` API provides a modern, Zod-inspired approach to defining schemas in Mondoo. It offers excellent TypeScript integration with automatic type inference.
+The `$` API provides a modern, Zod-inspired approach to defining schemas in Mongoose.do. It offers excellent TypeScript integration with automatic type inference.
 
 ## Overview
 
 ```typescript
-import { $, model } from 'mondoo'
+import { $, model } from 'mongoose.do'
 
 // Define schema with fluent API
 const userSchema = $.schema({
@@ -442,7 +442,7 @@ type Data = $.infer<typeof schema>
 ## Complete Example
 
 ```typescript
-import { $, model, Document } from 'mondoo'
+import { $, model, Document } from 'mongoose.do'
 
 // Define schema
 const userSchema = $.schema({

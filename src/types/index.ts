@@ -1,10 +1,10 @@
 /**
- * Core types for Mondoo
+ * Core types for Mongoose.do
  */
 
-import type { ObjectId } from 'mondodb'
+import type { ObjectId } from 'mongo.do'
 
-// Re-export ObjectId from mondodb
+// Re-export ObjectId from mongo.do
 export type { ObjectId }
 
 /**

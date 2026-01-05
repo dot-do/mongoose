@@ -1,6 +1,6 @@
 ---
 title: Model
-description: CRUD operations, static methods, and model management with Mondoo
+description: CRUD operations, static methods, and model management with Mongoose.do
 ---
 
 # Model
@@ -10,7 +10,7 @@ Models are constructors compiled from Schema definitions. They provide the inter
 ## Creating Models
 
 ```typescript
-import { Schema, model } from 'mondoo'
+import { Schema, model } from 'mongoose.do'
 
 const userSchema = new Schema({
   name: { type: String, required: true },
@@ -28,7 +28,7 @@ const User = model('User', userSchema, { collection: 'people' })
 ### Using the $ API
 
 ```typescript
-import { $, model } from 'mondoo'
+import { $, model } from 'mongoose.do'
 
 const userSchema = $.schema({
   name: $.string().required(),
@@ -421,7 +421,7 @@ Create a document instance from a plain object:
 // Plain object (e.g., from cache)
 const plainUser = { _id: '...', name: 'John', email: 'john@example.com' }
 
-// Hydrate into a Mondoo document
+// Hydrate into a Mongoose.do document
 const user = User.hydrate(plainUser)
 
 // Now has document methods
@@ -432,7 +432,7 @@ await user.save()
 ### Model Management
 
 ```typescript
-import { model, getModel, hasModel, deleteModel, modelNames } from 'mondoo'
+import { model, getModel, hasModel, deleteModel, modelNames } from 'mongoose.do'
 
 // Check if model exists
 if (hasModel('User')) {

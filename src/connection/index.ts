@@ -1,5 +1,5 @@
 /**
- * Connection adapter for Mondoo - adapts mondoo for Cloudflare Workers with capnweb
+ * Connection adapter for Mongoose.do - adapts mongoose.do for Cloudflare Workers with capnweb
  */
 
 import { model as createModel, deleteModel, getModel, type ModelConstructor } from '../model/index.js'
@@ -79,8 +79,8 @@ export interface ConnectionOptions {
  * This defines the expected shape of the Worker env object
  */
 export interface WorkerEnv {
-  /** The Durable Object binding for mondodb */
-  MONDODB?: DurableObjectNamespace
+  /** The Durable Object binding for mongo.do */
+  MONGODB?: DurableObjectNamespace
   /** Alternative binding names */
   DB?: DurableObjectNamespace
   DATABASE?: DurableObjectNamespace
@@ -227,7 +227,7 @@ class SimpleEventEmitter {
 
 /**
  * Connection class for managing database connections
- * Adapts mondoo for Cloudflare Workers with Durable Objects
+ * Adapts mongoose.do for Cloudflare Workers with Durable Objects
  */
 export class Connection extends SimpleEventEmitter {
   /** Current ready state */
@@ -236,7 +236,7 @@ export class Connection extends SimpleEventEmitter {
   /** Registered models for this connection */
   private _models: Map<string, ModelConstructor<any>> = new Map()
 
-  /** Database reference (placeholder for mondodb DO) */
+  /** Database reference (placeholder for mongo.do DO) */
   private _db: unknown = null
 
   /** Database name */
@@ -364,7 +364,7 @@ export class Connection extends SimpleEventEmitter {
     this._env = env
 
     // Find the DO binding
-    const binding = env.MONDODB || env.DB || env.DATABASE
+    const binding = env.MONGODB || env.DB || env.DATABASE
     if (binding) {
       this._db = binding
     }
@@ -521,7 +521,7 @@ export class Connection extends SimpleEventEmitter {
 
   /**
    * Start a session for transactions
-   * Note: This is a placeholder - actual implementation depends on mondodb
+   * Note: This is a placeholder - actual implementation depends on mongo.do
    */
   async startSession(options?: SessionOptions): Promise<ClientSession> {
     const sessionId = crypto.randomUUID()
@@ -547,7 +547,7 @@ export class Connection extends SimpleEventEmitter {
         if (!inTransaction) {
           throw new Error('No transaction in progress')
         }
-        // TODO: Actual commit via mondodb
+        // TODO: Actual commit via mongo.do
         inTransaction = false
         transactionOptions = {}
       },
@@ -556,7 +556,7 @@ export class Connection extends SimpleEventEmitter {
         if (!inTransaction) {
           throw new Error('No transaction in progress')
         }
-        // TODO: Actual abort via mondodb
+        // TODO: Actual abort via mongo.do
         inTransaction = false
         transactionOptions = {}
       },
@@ -565,7 +565,7 @@ export class Connection extends SimpleEventEmitter {
         if (inTransaction) {
           await session.abortTransaction()
         }
-        // TODO: Clean up session in mondodb
+        // TODO: Clean up session in mongo.do
       },
 
       async withTransaction<T>(
@@ -657,10 +657,10 @@ export class Connection extends SimpleEventEmitter {
 
   /**
    * Drop the database
-   * Note: Placeholder - actual implementation depends on mondodb
+   * Note: Placeholder - actual implementation depends on mongo.do
    */
   async dropDatabase(): Promise<void> {
-    // TODO: Implement via mondodb
+    // TODO: Implement via mongo.do
     console.warn('dropDatabase() is not yet implemented')
   }
 
@@ -668,7 +668,7 @@ export class Connection extends SimpleEventEmitter {
    * List all collections
    */
   async listCollections(): Promise<string[]> {
-    // TODO: Implement via mondodb
+    // TODO: Implement via mongo.do
     return this.modelNames()
   }
 
@@ -676,7 +676,7 @@ export class Connection extends SimpleEventEmitter {
    * Get a collection by name (Mongoose compatibility)
    */
   collection(name: string): unknown {
-    // TODO: Return actual collection from mondodb
+    // TODO: Return actual collection from mongo.do
     return null
   }
 
@@ -684,7 +684,7 @@ export class Connection extends SimpleEventEmitter {
    * Watch for changes (Mongoose compatibility)
    */
   watch(pipeline?: Record<string, unknown>[], options?: Record<string, unknown>): unknown {
-    // TODO: Implement change streams via mondodb
+    // TODO: Implement change streams via mongo.do
     console.warn('watch() is not yet implemented')
     return null
   }
@@ -710,17 +710,17 @@ export class Connection extends SimpleEventEmitter {
 // ============ Factory Function for Workers ============
 
 /**
- * Create a mondoo instance configured for a Cloudflare Worker
- * This is the recommended way to use mondoo in Workers
+ * Create a mongoose.do instance configured for a Cloudflare Worker
+ * This is the recommended way to use mongoose.do in Workers
  *
  * @example
  * ```typescript
  * // In your Worker
  * export default {
  *   async fetch(request: Request, env: Env) {
- *     const mondoo = createMondoo(env)
+ *     const mongoose = createMongoose(env)
  *
- *     const User = mondoo.model('User', userSchema)
+ *     const User = mongoose.model('User', userSchema)
  *     const users = await User.find()
  *
  *     return Response.json(users)
@@ -728,7 +728,7 @@ export class Connection extends SimpleEventEmitter {
  * }
  * ```
  */
-export function createMondoo(env: WorkerEnv, options?: ConnectionOptions): Connection {
+export function createMongoose(env: WorkerEnv, options?: ConnectionOptions): Connection {
   const connection = new Connection()
 
   if (options) {
@@ -744,7 +744,7 @@ export function createMondoo(env: WorkerEnv, options?: ConnectionOptions): Conne
 
 /**
  * Connect to database (Mongoose-compatible API)
- * In Workers, this is mainly for API compatibility - use createMondoo() instead
+ * In Workers, this is mainly for API compatibility - use createMongoose() instead
  */
 export async function connect(
   uri?: string,

@@ -1,8 +1,8 @@
 /**
- * Tests for the Mondoo database adapter
+ * Tests for the Mongoose.do database adapter
  *
  * These tests verify that the adapter correctly:
- * 1. Converts Payload field configs to Mondoo schemas
+ * 1. Converts Payload field configs to Mongoose.do schemas
  * 2. Builds queries from Payload's where clauses
  */
 
@@ -98,7 +98,7 @@ function buildQuery(where: any): any {
   return query
 }
 
-describe('Mondoo Adapter - Schema Conversion', () => {
+describe('Mongoose.do Adapter - Schema Conversion', () => {
   it('converts text fields', () => {
     const fields = [
       { name: 'title', type: 'text', required: true },
@@ -192,7 +192,7 @@ describe('Mondoo Adapter - Schema Conversion', () => {
   })
 })
 
-describe('Mondoo Adapter - Query Building', () => {
+describe('Mongoose.do Adapter - Query Building', () => {
   it('handles empty where clause', () => {
     expect(buildQuery(undefined)).toEqual({})
     expect(buildQuery(null)).toEqual({})
@@ -315,7 +315,7 @@ describe('Mondoo Adapter - Query Building', () => {
   })
 })
 
-describe('Mondoo Schema Creation', () => {
+describe('Mongoose.do Schema Creation', () => {
   it('creates schema from definition', () => {
     const schema = new Schema({
       title: { type: String, required: true },

@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   Connection,
-  createMondoo,
+  createMongoose,
   connect,
   disconnect,
   defaultConnection,
@@ -36,7 +36,7 @@ describe('Connection', () => {
 
   describe('useEnv()', () => {
     it('sets the worker environment', () => {
-      const env = { MONDODB: {} as any }
+      const env = { MONGODB: {} as any }
 
       conn.useEnv(env)
 
@@ -44,7 +44,7 @@ describe('Connection', () => {
     })
 
     it('marks connection as connected', () => {
-      const env = { MONDODB: {} as any }
+      const env = { MONGODB: {} as any }
 
       conn.useEnv(env)
 
@@ -53,7 +53,7 @@ describe('Connection', () => {
     })
 
     it('emits connected event', () => {
-      const env = { MONDODB: {} as any }
+      const env = { MONGODB: {} as any }
       const handler = vi.fn()
 
       conn.on('connected', handler)
@@ -386,22 +386,22 @@ describe('Connection', () => {
   })
 })
 
-describe('createMondoo()', () => {
+describe('createMongoose()', () => {
   it('creates connected instance', () => {
-    const env = { MONDODB: {} as any }
+    const env = { MONGODB: {} as any }
 
-    const mondoo = createMondoo(env)
+    const mongoose = createMongoose(env)
 
-    expect(mondoo).toBeInstanceOf(Connection)
-    expect(mondoo.isConnected()).toBe(true)
+    expect(mongoose).toBeInstanceOf(Connection)
+    expect(mongoose.isConnected()).toBe(true)
   })
 
   it('applies options', () => {
-    const env = { MONDODB: {} as any }
+    const env = { MONGODB: {} as any }
 
-    const mondoo = createMondoo(env, { dbName: 'mydb' })
+    const mongoose = createMongoose(env, { dbName: 'mydb' })
 
-    expect(mondoo.options.dbName).toBe('mydb')
+    expect(mongoose.options.dbName).toBe('mydb')
   })
 })
 

@@ -1,7 +1,7 @@
 /**
- * Mondoo + Mondodb Demo on Cloudflare Workers
+ * Mongoose.do + MongoDB.do Demo on Cloudflare Workers
  *
- * This demonstrates the mondoo ODM working with mondodb (MongoDB on Durable Objects).
+ * This demonstrates the mongoose.do ODM working with mongo.do (MongoDB on Durable Objects).
  * This is a foundation for running Payload CMS on Workers with Durable Objects.
  */
 
@@ -180,7 +180,7 @@ app.use('*', cors())
 // Health check
 app.get('/', (c) => {
   return c.json({
-    name: 'Mondoo + Mondodb Demo',
+    name: 'Mongoose.do + MongoDB.do Demo',
     description: 'MongoDB-compatible ODM on Cloudflare Durable Objects',
     status: 'running',
     endpoints: {

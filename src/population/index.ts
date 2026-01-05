@@ -1,5 +1,5 @@
 /**
- * Population System for Mondoo
+ * Population System for Mongoose.do
  *
  * Handles resolving ObjectId references to full documents with support for:
  * - Single and array ref population
@@ -742,7 +742,7 @@ function getNestedValue(obj: unknown, path: string): unknown {
       return undefined
     }
 
-    // Handle _doc for Mondoo documents
+    // Handle _doc for Mongoose.do documents
     if (typeof current === 'object' && '_doc' in current) {
       current = (current as { _doc: unknown })._doc
     }
@@ -763,7 +763,7 @@ function setNestedValue(obj: unknown, path: string, value: unknown): void {
 
   const parts = path.split('.')
 
-  // Handle _doc for Mondoo documents
+  // Handle _doc for Mongoose.do documents
   let target: unknown = obj
   if (typeof target === 'object' && target !== null && '_doc' in target) {
     target = (target as { _doc: unknown })._doc

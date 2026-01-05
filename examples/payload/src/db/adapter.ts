@@ -1,11 +1,11 @@
 /**
- * Mondoo Database Adapter for Payload CMS
+ * Mongoose.do Database Adapter for Payload CMS
  *
  * This adapter allows Payload CMS to run on Cloudflare Workers
- * using mondoo (Mongoose-like ODM) with mondodb (MongoDB on Durable Objects)
+ * using mongoose.do (Mongoose-like ODM) with mongo.do (MongoDB on Durable Objects)
  */
 
-import { Schema, Model, Connection, type SchemaDefinition } from 'mondoo'
+import { Schema, Model, Connection, type SchemaDefinition } from 'mongoose.do'
 import type {
   BaseDatabaseAdapter,
   DatabaseAdapterObj,
@@ -20,20 +20,20 @@ import type {
   Count,
 } from 'payload'
 
-export interface MondooAdapterArgs {
-  /** Durable Object binding for mondodb */
+export interface MongooseAdapterArgs {
+  /** Durable Object binding for mongo.do */
   binding?: DurableObjectNamespace
   /** Optional: disable transactions (DO doesn't support them yet) */
   disableTransactions?: boolean
 }
 
-interface MondooAdapter extends BaseDatabaseAdapter {
+interface MongooseAdapter extends BaseDatabaseAdapter {
   connection: Connection | null
   models: Map<string, Model<any>>
 }
 
 /**
- * Convert Payload field config to Mondoo schema definition
+ * Convert Payload field config to Mongoose.do schema definition
  */
 function fieldsToSchema(fields: any[]): SchemaDefinition {
   const schemaDef: SchemaDefinition = {}
@@ -153,16 +153,16 @@ function buildQuery(where: any): any {
 }
 
 /**
- * Create the Mondoo database adapter for Payload
+ * Create the Mongoose.do database adapter for Payload
  */
-export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<MondooAdapter> {
+export function mongooseAdapter(args: MongooseAdapterArgs = {}): DatabaseAdapterObj<MongooseAdapter> {
   const { disableTransactions = true } = args
 
   return {
-    name: 'mondoo',
+    name: 'mongoose.do',
 
-    init: async function init({ payload }): Promise<MondooAdapter> {
-      const adapter = this as unknown as MondooAdapter
+    init: async function init({ payload }): Promise<MongooseAdapter> {
+      const adapter = this as unknown as MongooseAdapter
       adapter.models = new Map()
       adapter.connection = null
 
@@ -205,7 +205,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     connect: async function connect({ payload }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       // Connection is established per-request in Workers
       // The actual DB binding is passed via env
       adapter.connection = new Connection()
@@ -213,14 +213,14 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     destroy: async function destroy() {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       adapter.connection = null
       adapter.models.clear()
     },
 
     // CRUD Operations
     create: async function create({ collection, data, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -232,7 +232,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     find: async function find({ collection, where, limit, page, sort, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -272,7 +272,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     findOne: async function findOne({ collection, where, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -284,7 +284,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     updateOne: async function updateOne({ collection, where, data, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -300,7 +300,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     deleteOne: async function deleteOne({ collection, where, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -316,7 +316,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     deleteMany: async function deleteMany({ collection, where, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -329,7 +329,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     count: async function count({ collection, where, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -354,7 +354,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
 
     // Globals
     createGlobal: async function createGlobal({ slug, data, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(`globals_${slug}`)
       if (!model) throw new Error(`Global ${slug} not found`)
 
@@ -366,7 +366,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     findGlobal: async function findGlobal({ slug, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(`globals_${slug}`)
       if (!model) throw new Error(`Global ${slug} not found`)
 
@@ -378,7 +378,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     updateGlobal: async function updateGlobal({ slug, data, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(`globals_${slug}`)
       if (!model) throw new Error(`Global ${slug} not found`)
 
@@ -413,7 +413,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
 
     // Upsert
     upsert: async function upsert({ collection, where, data, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -430,7 +430,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
 
     // Required but not used
     updateMany: async function updateMany({ collection, where, data, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -443,7 +443,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
     },
 
     findDistinct: async function findDistinct({ collection, field, where, req }) {
-      const adapter = this as unknown as MondooAdapter
+      const adapter = this as unknown as MongooseAdapter
       const model = adapter.models.get(collection)
       if (!model) throw new Error(`Collection ${collection} not found`)
 
@@ -455,7 +455,7 @@ export function mondooAdapter(args: MondooAdapterArgs = {}): DatabaseAdapterObj<
       const values = new Set(docs.map((d: any) => d[field]))
       return Array.from(values)
     },
-  } as unknown as DatabaseAdapterObj<MondooAdapter>
+  } as unknown as DatabaseAdapterObj<MongooseAdapter>
 }
 
-export default mondooAdapter
+export default mongooseAdapter

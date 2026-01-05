@@ -1,5 +1,5 @@
 /**
- * Aggregate Builder - MongoDB Aggregation Pipeline for Mondoo
+ * Aggregate Builder - MongoDB Aggregation Pipeline for Mongoose.do
  *
  * @example
  * ```typescript
@@ -184,7 +184,7 @@ export interface AggregateModelLike<T = unknown> {
 // ============ Aggregate Class ============
 
 /**
- * Chainable aggregation pipeline builder for Mondoo
+ * Chainable aggregation pipeline builder for Mongoose.do
  *
  * The Aggregate class is LAZY - it doesn't execute until:
  * - exec() is called
