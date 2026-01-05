@@ -1,0 +1,162 @@
+---
+title: $ API Reference
+description: Type-safe schema definition with automatic TypeScript inference
+---
+
+The `$` namespace provides a Zod-like experience for defining schemas with full type inference. This is the recommended approach for new projects.
+
+## Type Builders
+
+### Primitives
+
+```typescript
+$.string()              // String with validations
+$.number()              // Number with min/max/int
+$.boolean()             // Boolean
+$.date()                // Date with range validation
+$.objectId()            // MongoDB ObjectId with refs
+$.bigint()              // BigInt support
+$.buffer()              // Binary data
+```
+
+### Complex Types
+
+```typescript
+$.array($.string())     // Typed arrays
+$.object({ ... })       // Nested objects
+$.map($.number())       // Key-value maps
+$.enum(['a', 'b'])      // String enums
+$.literal('active')     // Literal values
+$.mixed()               // Any type (escape hatch)
+```
+
+## Chainable Validators
+
+Build validation rules by chaining methods:
+
+```typescript
+const userSchema = $.schema({
+  // String validations
+  email: $.string().email().required().unique(),
+  username: $.string().min(3).max(20).trim().lowercase(),
+  website: $.string().url(),
+
+  // Number validations
+  age: $.number().min(13).max(120).int(),
+  score: $.number().positive().finite(),
+
+  // Array validations
+  tags: $.array($.string()).min(1).max(10),
+
+  // References
+  author: $.objectId().ref('User').required(),
+  followers: $.array($.objectId().ref('User')),
+
+  // Nested objects
+  profile: $.object({
+    bio: $.string().max(500),
+    avatar: $.string().url(),
+    social: $.map($.string().url())
+  }),
+
+  // Custom validation
+  customField: $.string().validate(v => v.startsWith('prefix_'))
+})
+```
+
+## Type Inference
+
+Extract TypeScript types from your schema automatically:
+
+```typescript
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required(),
+  age: $.number()
+})
+
+// Infer the type from the schema
+type User = $.infer<typeof userSchema>
+
+// User type is equivalent to:
+// {
+//   name: string
+//   email: string
+//   age?: number
+// }
+```
+
+## Full Type Safety
+
+mongoose.do provides complete type safety throughout your application:
+
+```typescript
+import { $, model, Document } from 'mongoose.do'
+
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required(),
+  age: $.number()
+})
+
+type User = $.infer<typeof userSchema>
+
+const User = model<User>('User', userSchema)
+
+// Full type safety on queries
+const user = await User.findById(id)
+if (user) {
+  user.name   // string
+  user.email  // string
+  user.age    // number | undefined
+}
+```
+
+## String Validators
+
+| Method | Description |
+|--------|-------------|
+| `.required()` | Field must be provided |
+| `.unique()` | Value must be unique in collection |
+| `.email()` | Must be valid email format |
+| `.url()` | Must be valid URL format |
+| `.min(n)` | Minimum string length |
+| `.max(n)` | Maximum string length |
+| `.trim()` | Trim whitespace |
+| `.lowercase()` | Convert to lowercase |
+| `.uppercase()` | Convert to uppercase |
+
+## Number Validators
+
+| Method | Description |
+|--------|-------------|
+| `.min(n)` | Minimum value |
+| `.max(n)` | Maximum value |
+| `.int()` | Must be integer |
+| `.positive()` | Must be positive |
+| `.negative()` | Must be negative |
+| `.finite()` | Must be finite |
+
+## Array Validators
+
+| Method | Description |
+|--------|-------------|
+| `.min(n)` | Minimum array length |
+| `.max(n)` | Maximum array length |
+
+## Custom Validation
+
+Add custom validation logic with the `.validate()` method:
+
+```typescript
+const schema = $.schema({
+  // Simple boolean validation
+  username: $.string().validate(v => v.length >= 3),
+
+  // Validation with error message
+  email: $.string().validate({
+    validator: v => v.includes('@'),
+    message: 'Must be a valid email'
+  })
+})
+```

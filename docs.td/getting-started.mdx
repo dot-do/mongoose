@@ -1,0 +1,140 @@
+---
+title: Getting Started
+description: Set up mongoose.do in your Cloudflare Workers project
+---
+
+## Installation
+
+Install mongoose.do and its peer dependency:
+
+```bash
+npm install mongoose.do mongo.do
+```
+
+`mongo.do` provides the MongoDB-compatible storage layer running on Durable Objects.
+
+## Define Your Schema
+
+You can use either the modern `$` API (recommended) or classic Mongoose syntax.
+
+### Using the $ API (Recommended)
+
+The `$` API provides a Zod-inspired approach with automatic TypeScript inference:
+
+```typescript
+import { $, model, createMongoose } from 'mongoose.do'
+
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required().unique(),
+  age: $.number().min(0).max(150),
+  role: $.enum(['admin', 'user', 'guest']).default('user'),
+  posts: $.array($.objectId().ref('Post'))
+})
+
+// Automatic type inference - no manual interface needed
+type User = $.infer<typeof userSchema>
+
+const User = model<User>('User', userSchema)
+```
+
+### Using Classic Mongoose Syntax
+
+Perfect for migrating existing Mongoose codebases:
+
+```typescript
+import { Schema, model } from 'mongoose.do'
+
+const userSchema = new Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  age: { type: Number, min: 0, max: 150 },
+  role: { type: String, enum: ['admin', 'user', 'guest'], default: 'user' },
+  posts: [{ type: 'ObjectId', ref: 'Post' }]
+}, {
+  timestamps: true
+})
+
+const User = model('User', userSchema)
+```
+
+## Use in Cloudflare Workers
+
+```typescript
+// worker.ts
+import { createMongoose } from 'mongoose.do'
+import { userSchema, postSchema } from './schemas'
+
+interface Env {
+  MONGODB: DurableObjectNamespace
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const mongoose = createMongoose(env)
+
+    const User = mongoose.model('User', userSchema)
+    const Post = mongoose.model('Post', postSchema)
+
+    // Full Mongoose query API
+    const admins = await User
+      .find({ role: 'admin' })
+      .select('name email')
+      .sort({ createdAt: -1 })
+      .limit(10)
+
+    return Response.json(admins)
+  }
+}
+```
+
+## Wrangler Configuration
+
+Configure your `wrangler.toml` to set up the Durable Object binding:
+
+```toml
+name = "my-app"
+main = "src/worker.ts"
+
+[[durable_objects.bindings]]
+name = "MONGODB"
+class_name = "MongoDB"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["MongoDB"]
+```
+
+## Basic CRUD Operations
+
+Once your model is set up, you can perform standard CRUD operations:
+
+```typescript
+// Create
+const user = await User.create({
+  name: 'Jane Doe',
+  email: 'jane@example.com',
+  age: 28
+})
+
+// Read
+const users = await User.find({ age: { $gte: 18 } })
+const user = await User.findById('507f1f77bcf86cd799439011')
+const admin = await User.findOne({ role: 'admin' })
+
+// Update
+await User.updateOne(
+  { email: 'jane@example.com' },
+  { $set: { name: 'Jane Smith' } }
+)
+
+const updated = await User.findByIdAndUpdate(
+  userId,
+  { $inc: { loginCount: 1 } },
+  { new: true }
+)
+
+// Delete
+await User.deleteOne({ email: 'jane@example.com' })
+await User.findByIdAndDelete(userId)
+```

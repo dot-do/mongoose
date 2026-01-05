@@ -1,18 +1,73 @@
 ---
-title: Welcome
-description: Documentation for mongoose.do
+title: mongoose.do
+description: The Mongoose API you know and love, built for Cloudflare Durable Objects
 ---
 
-# Welcome to mongoose.do
+mongoose.do is a Mongoose-compatible ODM that brings the familiar Mongoose developer experience to Cloudflare Workers and Durable Objects. Write schemas, models, and queries exactly like Mongoose, but run them on the edge with zero cold start overhead.
 
-Mongoose-compatible ODM for Cloudflare Durable Objects with TypeScript-first $ API
+## Why mongoose.do?
 
-## Getting Started
+- **Familiar API** - Same Schema, Model, and Query patterns from Mongoose
+- **Edge-Native** - Built specifically for Cloudflare Workers + Durable Objects
+- **TypeScript-First** - Full type inference with the modern `$` API
+- **Zero Cold Start Overhead** - No connection pooling, no MongoDB Atlas needed
+- **Drop-in Migration** - Move existing Mongoose code to the edge with minimal changes
 
-Add your getting started guide here.
+## Installation
 
-## Features
+```bash
+npm install mongoose.do mongo.do
+```
 
-- Feature 1
-- Feature 2
-- Feature 3
+`mongo.do` is the peer dependency that provides the MongoDB-compatible storage layer on Durable Objects.
+
+## Quick Example
+
+```typescript
+import { $, model, createMongoose } from 'mongoose.do'
+
+// Define schema with the type-safe $ API
+const userSchema = $.schema({
+  name: $.string().required(),
+  email: $.string().email().required().unique(),
+  age: $.number().min(0).max(150),
+  role: $.enum(['admin', 'user', 'guest']).default('user')
+})
+
+// Automatic type inference
+type User = $.infer<typeof userSchema>
+
+// Create the model
+const User = model<User>('User', userSchema)
+
+// Full Mongoose query API
+const admins = await User
+  .find({ role: 'admin' })
+  .select('name email')
+  .sort({ createdAt: -1 })
+  .limit(10)
+```
+
+## API Compatibility
+
+mongoose.do implements the core Mongoose API surface:
+
+| Feature | Status |
+|---------|--------|
+| Schema Definition | Full |
+| Type Coercion | Full |
+| Validation | Full |
+| Virtuals | Full |
+| Instance Methods | Full |
+| Static Methods | Full |
+| Middleware/Hooks | Full |
+| Population | Full |
+| Query Builder | Full |
+| Aggregation | Full |
+| Discriminators | Full |
+| Transactions | Partial |
+
+## Related Packages
+
+- [mongo.do](https://mongo.do) - MongoDB-compatible API for Durable Objects
+- [payload.do](https://payload.do) - Payload CMS adapter for Cloudflare Workers

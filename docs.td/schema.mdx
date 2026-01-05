@@ -1,0 +1,172 @@
+---
+title: Schema Features
+description: Virtuals, methods, statics, and middleware hooks
+---
+
+mongoose.do supports the full range of Mongoose schema features including virtuals, instance methods, static methods, and middleware hooks.
+
+## Virtuals
+
+Define computed properties that don't persist to the database:
+
+```typescript
+userSchema.virtual('fullName')
+  .get(function() {
+    return `${this.firstName} ${this.lastName}`
+  })
+  .set(function(value) {
+    const [first, ...rest] = value.split(' ')
+    this.firstName = first
+    this.lastName = rest.join(' ')
+  })
+
+// Usage
+const user = await User.findById(id)
+console.log(user.fullName) // "Jane Doe"
+
+user.fullName = 'John Smith'
+// Sets firstName = 'John', lastName = 'Smith'
+```
+
+## Instance Methods
+
+Add custom methods to document instances:
+
+```typescript
+userSchema.method('comparePassword', async function(candidate: string) {
+  return await bcrypt.compare(candidate, this.password)
+})
+
+userSchema.method('getPublicProfile', function() {
+  return {
+    id: this._id,
+    name: this.name,
+    avatar: this.avatar
+  }
+})
+
+// Usage
+const user = await User.findById(id)
+const isValid = await user.comparePassword('secret123')
+const profile = user.getPublicProfile()
+```
+
+## Static Methods
+
+Add custom methods to the model itself:
+
+```typescript
+userSchema.static('findByEmail', function(email: string) {
+  return this.findOne({ email })
+})
+
+userSchema.static('findActiveUsers', function() {
+  return this.find({ status: 'active' })
+})
+
+// Usage
+const user = await User.findByEmail('jane@example.com')
+const activeUsers = await User.findActiveUsers()
+```
+
+## Middleware Hooks
+
+Execute logic before or after certain operations:
+
+### Pre Hooks
+
+Run before an operation:
+
+```typescript
+// Before save
+userSchema.pre('save', function(next) {
+  this.updatedAt = new Date()
+  next()
+})
+
+// Async pre hook
+userSchema.pre('save', async function() {
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10)
+  }
+})
+
+// Before validation
+userSchema.pre('validate', function(next) {
+  if (!this.slug) {
+    this.slug = slugify(this.title)
+  }
+  next()
+})
+```
+
+### Post Hooks
+
+Run after an operation:
+
+```typescript
+userSchema.post('save', function(doc) {
+  console.log(`User ${doc.name} saved`)
+})
+
+userSchema.post('remove', function(doc) {
+  // Clean up related documents
+  await Post.deleteMany({ author: doc._id })
+})
+```
+
+### Query Middleware
+
+Hook into query operations:
+
+```typescript
+// Apply to all find queries
+userSchema.pre('find', function() {
+  this.where({ deleted: { $ne: true } })
+})
+
+// Apply to findOne
+userSchema.pre('findOne', function() {
+  this.populate('profile')
+})
+```
+
+## Schema Options
+
+Configure schema behavior with options:
+
+```typescript
+const userSchema = new Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true }
+}, {
+  timestamps: true,           // Add createdAt and updatedAt
+  collection: 'users',        // Custom collection name
+  toJSON: { virtuals: true }, // Include virtuals in JSON
+  toObject: { virtuals: true }
+})
+```
+
+## Indexes
+
+Define indexes on your schema:
+
+```typescript
+const userSchema = $.schema({
+  email: $.string().required().unique(), // Creates unique index
+  name: $.string().required(),
+  location: $.object({
+    type: $.literal('Point'),
+    coordinates: $.array($.number())
+  })
+})
+
+// Compound index
+userSchema.index({ name: 1, createdAt: -1 })
+
+// Text index for search
+userSchema.index({ name: 'text', bio: 'text' })
+
+// Geospatial index
+userSchema.index({ location: '2dsphere' })
+```

@@ -1,0 +1,215 @@
+---
+title: Query Builder
+description: Chainable queries, population, and aggregation pipelines
+---
+
+mongoose.do provides the full Mongoose query API for building complex queries.
+
+## Chainable Queries
+
+Build queries by chaining methods:
+
+```typescript
+const results = await User
+  .find()
+  .where('age').gte(18).lte(65)
+  .where('status').equals('active')
+  .where('role').in(['user', 'admin'])
+  .select('name email age')
+  .sort({ createdAt: -1 })
+  .skip(20)
+  .limit(10)
+  .lean()
+```
+
+## Query Methods
+
+### Find Operations
+
+```typescript
+// Find all matching documents
+const users = await User.find({ age: { $gte: 18 } })
+
+// Find one document
+const admin = await User.findOne({ role: 'admin' })
+
+// Find by ID
+const user = await User.findById('507f1f77bcf86cd799439011')
+
+// Check if document exists
+const exists = await User.exists({ email: 'jane@example.com' })
+
+// Count documents
+const count = await User.countDocuments({ status: 'active' })
+```
+
+### Update Operations
+
+```typescript
+// Update one document
+await User.updateOne(
+  { email: 'jane@example.com' },
+  { $set: { name: 'Jane Smith' } }
+)
+
+// Update many documents
+await User.updateMany(
+  { status: 'pending' },
+  { $set: { status: 'active' } }
+)
+
+// Find and update (returns the document)
+const updated = await User.findByIdAndUpdate(
+  userId,
+  { $inc: { loginCount: 1 } },
+  { new: true }  // Return updated document
+)
+
+// Find one and update
+const user = await User.findOneAndUpdate(
+  { email: 'jane@example.com' },
+  { $set: { lastLogin: new Date() } },
+  { new: true, upsert: true }
+)
+```
+
+### Delete Operations
+
+```typescript
+// Delete one document
+await User.deleteOne({ email: 'jane@example.com' })
+
+// Delete many documents
+await User.deleteMany({ status: 'inactive' })
+
+// Find and delete (returns the document)
+const deleted = await User.findByIdAndDelete(userId)
+
+// Find one and delete
+const user = await User.findOneAndDelete({ email: 'jane@example.com' })
+```
+
+## Query Operators
+
+Use MongoDB query operators:
+
+```typescript
+// Comparison
+await User.find({ age: { $gt: 18, $lt: 65 } })
+await User.find({ role: { $in: ['admin', 'moderator'] } })
+await User.find({ status: { $ne: 'deleted' } })
+
+// Logical
+await User.find({
+  $or: [
+    { role: 'admin' },
+    { permissions: { $in: ['write'] } }
+  ]
+})
+
+// Element
+await User.find({ avatar: { $exists: true } })
+
+// Array
+await User.find({ tags: { $all: ['javascript', 'typescript'] } })
+await User.find({ 'scores.0': { $gte: 80 } })
+```
+
+## Population
+
+Load referenced documents:
+
+```typescript
+// Simple population
+const posts = await Post
+  .find({ status: 'published' })
+  .populate('author', 'name avatar')
+
+// Multiple populations
+const posts = await Post
+  .find()
+  .populate('author')
+  .populate('category')
+
+// Nested population with options
+const posts = await Post
+  .find({ status: 'published' })
+  .populate({
+    path: 'comments',
+    match: { approved: true },
+    populate: { path: 'user', select: 'name' }
+  })
+  .sort({ publishedAt: -1 })
+```
+
+## Aggregation Pipeline
+
+Build complex data transformations:
+
+```typescript
+const stats = await User.aggregate()
+  .match({ status: 'active' })
+  .group({
+    _id: '$role',
+    count: { $sum: 1 },
+    avgAge: { $avg: '$age' }
+  })
+  .sort({ count: -1 })
+```
+
+### Aggregation Stages
+
+```typescript
+const results = await Order.aggregate()
+  // Filter documents
+  .match({ status: 'completed' })
+
+  // Group and compute
+  .group({
+    _id: { $month: '$createdAt' },
+    totalRevenue: { $sum: '$total' },
+    orderCount: { $sum: 1 }
+  })
+
+  // Add computed fields
+  .addFields({
+    averageOrderValue: {
+      $divide: ['$totalRevenue', '$orderCount']
+    }
+  })
+
+  // Sort results
+  .sort({ _id: 1 })
+
+  // Limit output
+  .limit(12)
+```
+
+## Lean Queries
+
+Return plain JavaScript objects instead of Mongoose documents:
+
+```typescript
+// Returns plain objects (faster, less memory)
+const users = await User.find().lean()
+
+// Mongoose documents (with methods and virtuals)
+const users = await User.find()
+```
+
+Use `.lean()` when you don't need document methods or virtuals for better performance.
+
+## Projections
+
+Select specific fields to return:
+
+```typescript
+// Include only specific fields
+const users = await User.find().select('name email')
+
+// Exclude specific fields
+const users = await User.find().select('-password -__v')
+
+// Using object syntax
+const users = await User.find({}, { name: 1, email: 1 })
+```
