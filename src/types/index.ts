@@ -1,5 +1,5 @@
 /**
- * Core types for Mondoose
+ * Core types for Mondoo
  */
 
 import type { ObjectId } from 'mondodb'

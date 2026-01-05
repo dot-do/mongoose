@@ -1,5 +1,5 @@
 /**
- * Connection adapter for Mondoose - adapts mondoose for Cloudflare Workers with capnweb
+ * Connection adapter for Mondoo - adapts mondoo for Cloudflare Workers with capnweb
  */
 
 import { model as createModel, deleteModel, getModel, type ModelConstructor } from '../model/index.js'
@@ -227,7 +227,7 @@ class SimpleEventEmitter {
 
 /**
  * Connection class for managing database connections
- * Adapts mondoose for Cloudflare Workers with Durable Objects
+ * Adapts mondoo for Cloudflare Workers with Durable Objects
  */
 export class Connection extends SimpleEventEmitter {
   /** Current ready state */
@@ -710,17 +710,17 @@ export class Connection extends SimpleEventEmitter {
 // ============ Factory Function for Workers ============
 
 /**
- * Create a mondoose instance configured for a Cloudflare Worker
- * This is the recommended way to use mondoose in Workers
+ * Create a mondoo instance configured for a Cloudflare Worker
+ * This is the recommended way to use mondoo in Workers
  *
  * @example
  * ```typescript
  * // In your Worker
  * export default {
  *   async fetch(request: Request, env: Env) {
- *     const mondoose = createMondoose(env)
+ *     const mondoo = createMondoo(env)
  *
- *     const User = mondoose.model('User', userSchema)
+ *     const User = mondoo.model('User', userSchema)
  *     const users = await User.find()
  *
  *     return Response.json(users)
@@ -728,7 +728,7 @@ export class Connection extends SimpleEventEmitter {
  * }
  * ```
  */
-export function createMondoose(env: WorkerEnv, options?: ConnectionOptions): Connection {
+export function createMondoo(env: WorkerEnv, options?: ConnectionOptions): Connection {
   const connection = new Connection()
 
   if (options) {
@@ -744,7 +744,7 @@ export function createMondoose(env: WorkerEnv, options?: ConnectionOptions): Con
 
 /**
  * Connect to database (Mongoose-compatible API)
- * In Workers, this is mainly for API compatibility - use createMondoose() instead
+ * In Workers, this is mainly for API compatibility - use createMondoo() instead
  */
 export async function connect(
   uri?: string,

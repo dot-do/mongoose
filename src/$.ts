@@ -1,9 +1,9 @@
 /**
- * The $ namespace - Zod-style API for Mondoose
+ * The $ namespace - Zod-style API for Mondoo
  *
  * @example
  * ```typescript
- * import { $ } from 'mondoose'
+ * import { $ } from 'mondoo'
  *
  * const userSchema = $.schema({
  *   name: $.string().required(),

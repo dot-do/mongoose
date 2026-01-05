@@ -1,11 +1,11 @@
 ---
 title: Connection
-description: Connect Mondoose to MongoDB via Cloudflare Durable Objects
+description: Connect Mondoo to MongoDB via Cloudflare Durable Objects
 ---
 
 # Connection
 
-Mondoose is designed for Cloudflare Workers with Durable Objects. It provides a connection adapter that works with `mondodb` (MongoDB-compatible API for Durable Objects).
+Mondoo is designed for Cloudflare Workers with Durable Objects. It provides a connection adapter that works with `mondodb` (MongoDB-compatible API for Durable Objects).
 
 ## Basic Setup
 
@@ -13,7 +13,7 @@ Mondoose is designed for Cloudflare Workers with Durable Objects. It provides a 
 
 ```typescript
 // worker.ts
-import { createMondoose } from 'mondoose'
+import { createMondoo } from 'mondoo'
 import { userSchema, postSchema } from './schemas'
 
 interface Env {
@@ -22,12 +22,12 @@ interface Env {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // Create mondoose instance with Worker environment
-    const mondoose = createMondoose(env)
+    // Create mondoo instance with Worker environment
+    const mondoo = createMondoo(env)
 
     // Register models
-    const User = mondoose.model('User', userSchema)
-    const Post = mondoose.model('Post', postSchema)
+    const User = mondoo.model('User', userSchema)
+    const Post = mondoo.model('Post', postSchema)
 
     // Use models
     const users = await User.find({ role: 'admin' })
@@ -54,7 +54,7 @@ new_classes = ["MondoDB"]
 ## Connection Options
 
 ```typescript
-const mondoose = createMondoose(env, {
+const mondoo = createMondoo(env, {
   // Database name (default: 'default')
   database: 'myapp',
 
@@ -71,16 +71,16 @@ const mondoose = createMondoose(env, {
 
 ## Model Registration
 
-### Using createMondoose
+### Using createMondoo
 
 ```typescript
-const mondoose = createMondoose(env)
+const mondoo = createMondoo(env)
 
 // Register with schema
-const User = mondoose.model('User', userSchema)
+const User = mondoo.model('User', userSchema)
 
 // Register with options
-const Post = mondoose.model('Post', postSchema, {
+const Post = mondoo.model('Post', postSchema, {
   collection: 'articles'  // Override collection name
 })
 ```
@@ -90,7 +90,7 @@ const Post = mondoose.model('Post', postSchema, {
 For simpler cases without per-request instances:
 
 ```typescript
-import { model, Schema } from 'mondoose'
+import { model, Schema } from 'mondoo'
 
 const userSchema = new Schema({ name: String })
 const User = model('User', userSchema)
@@ -110,24 +110,24 @@ export default {
 ### Get Connection
 
 ```typescript
-const mondoose = createMondoose(env)
+const mondoo = createMondoo(env)
 
 // Get the underlying connection
-const connection = mondoose.connection
+const connection = mondoo.connection
 ```
 
 ### Connection Events
 
 ```typescript
-mondoose.connection.on('connected', () => {
+mondoo.connection.on('connected', () => {
   console.log('Connected to database')
 })
 
-mondoose.connection.on('error', (err) => {
+mondoo.connection.on('error', (err) => {
   console.error('Connection error:', err)
 })
 
-mondoose.connection.on('disconnected', () => {
+mondoo.connection.on('disconnected', () => {
   console.log('Disconnected from database')
 })
 ```
@@ -136,8 +136,8 @@ mondoose.connection.on('disconnected', () => {
 
 ```typescript
 // Create multiple connections for different databases
-const userDb = createMondoose(env, { database: 'users' })
-const analyticsDb = createMondoose(env, { database: 'analytics' })
+const userDb = createMondoo(env, { database: 'users' })
+const analyticsDb = createMondoo(env, { database: 'analytics' })
 
 // Register models to specific databases
 const User = userDb.model('User', userSchema)
@@ -147,7 +147,7 @@ const Event = analyticsDb.model('Event', eventSchema)
 ## Model Management
 
 ```typescript
-import { model, getModel, hasModel, deleteModel, modelNames } from 'mondoose'
+import { model, getModel, hasModel, deleteModel, modelNames } from 'mondoo'
 
 // Check if model exists
 if (hasModel('User')) {
@@ -166,10 +166,10 @@ modelNames().forEach(name => deleteModel(name))
 
 ## Transactions
 
-Mondoose supports transactions via sessions:
+Mondoo supports transactions via sessions:
 
 ```typescript
-const session = await mondoose.startSession()
+const session = await mondoo.startSession()
 
 try {
   session.startTransaction()
@@ -192,7 +192,7 @@ try {
 ### Transaction Helper
 
 ```typescript
-await mondoose.connection.transaction(async (session) => {
+await mondoo.connection.transaction(async (session) => {
   const user = await User.create([{ name: 'John' }], { session })
   const post = await Post.create([{
     title: 'Hello',
@@ -207,11 +207,11 @@ await mondoose.connection.transaction(async (session) => {
 
 ```typescript
 // Check connection status
-const isConnected = mondoose.connection.readyState === 1
+const isConnected = mondoo.connection.readyState === 1
 
 // Ping the database
 try {
-  await mondoose.connection.db.admin().ping()
+  await mondoo.connection.db.admin().ping()
   console.log('Database is healthy')
 } catch (error) {
   console.error('Database health check failed')
@@ -225,9 +225,9 @@ try {
 ```typescript
 export default {
   async fetch(request: Request, env: Env) {
-    // Create fresh mondoose per request
-    const mondoose = createMondoose(env)
-    const User = mondoose.model('User', userSchema)
+    // Create fresh mondoo per request
+    const mondoo = createMondoo(env)
+    const User = mondoo.model('User', userSchema)
 
     const users = await User.find()
     return Response.json(users)
@@ -245,11 +245,11 @@ export const postSchema = new Schema({ title: String })
 // worker.ts
 export default {
   async fetch(request: Request, env: Env) {
-    const mondoose = createMondoose(env)
+    const mondoo = createMondoo(env)
 
-    // Models are cached per mondoose instance
-    const User = mondoose.model('User', userSchema)
-    const Post = mondoose.model('Post', postSchema)
+    // Models are cached per mondoo instance
+    const User = mondoo.model('User', userSchema)
+    const Post = mondoo.model('Post', postSchema)
 
     // ... use models
   }
@@ -260,7 +260,7 @@ export default {
 
 ```typescript
 // types.ts
-import type { Schema } from 'mondoose'
+import type { Schema } from 'mondoo'
 
 // Environment types
 interface Env {
@@ -296,13 +296,13 @@ export const userSchema = new Schema({
 // worker.ts
 import { userSchema } from './schemas/user'
 
-const User = mondoose.model('User', userSchema)
+const User = mondoo.model('User', userSchema)
 ```
 
 ### 2. Use Environment Variables
 
 ```typescript
-const mondoose = createMondoose(env, {
+const mondoo = createMondoo(env, {
   database: env.DATABASE_NAME || 'production'
 })
 ```
@@ -313,8 +313,8 @@ const mondoose = createMondoose(env, {
 export default {
   async fetch(request: Request, env: Env) {
     try {
-      const mondoose = createMondoose(env)
-      const User = mondoose.model('User', userSchema)
+      const mondoo = createMondoo(env)
+      const User = mondoo.model('User', userSchema)
 
       const users = await User.find()
       return Response.json(users)
@@ -334,9 +334,9 @@ const userSchema = new Schema({ name: String })
 
 export default {
   async fetch(request: Request, env: Env) {
-    // Only create mondoose and register models inside handler
-    const mondoose = createMondoose(env)
-    const User = mondoose.model('User', userSchema)
+    // Only create mondoo and register models inside handler
+    const mondoo = createMondoo(env)
+    const User = mondoo.model('User', userSchema)
 
     // ...
   }

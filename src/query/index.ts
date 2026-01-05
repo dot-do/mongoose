@@ -1,5 +1,5 @@
 /**
- * Query Builder - Chainable query construction for Mondoose
+ * Query Builder - Chainable query construction for Mondoo
  *
  * @example
  * ```typescript
@@ -150,7 +150,7 @@ export interface ModelLike<T = unknown> {
 // ============ Query Class ============
 
 /**
- * Chainable query builder for Mondoose
+ * Chainable query builder for Mondoo
  *
  * The Query class is LAZY - it doesn't execute until:
  * - exec() is called
@@ -662,7 +662,7 @@ export class Query<TDoc = unknown, TResult = TDoc> implements PromiseLike<TResul
   }
 
   /**
-   * Enable lean mode - return plain JavaScript objects instead of Mondoose documents
+   * Enable lean mode - return plain JavaScript objects instead of Mondoo documents
    * @param lean - Whether to enable lean mode (default: true)
    */
   lean<LeanResult = TResult>(lean: boolean = true): Query<TDoc, LeanResult> {

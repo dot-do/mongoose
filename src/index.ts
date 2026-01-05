@@ -1,5 +1,5 @@
 /**
- * Mondoose - Mongoose-compatible ODM for Cloudflare Durable Objects
+ * Mondoo - Mongoose-compatible ODM for Cloudflare Durable Objects
  *
  * Supports two APIs:
  * 1. $ namespace - Zod-style TypeScript-first API
@@ -8,7 +8,7 @@
  * @example
  * ```typescript
  * // $ API (recommended for new projects)
- * import { $, model, createMondoose } from 'mondoose'
+ * import { $, model, createMondoo } from 'mondoo'
  *
  * const userSchema = $.schema({
  *   name: $.string().required(),
@@ -20,7 +20,7 @@
  * const User = model('User', userSchema)
  *
  * // Mongoose API (for migrations)
- * import { Schema, model } from 'mondoose'
+ * import { Schema, model } from 'mondoo'
  *
  * const userSchema = new Schema({
  *   name: { type: String, required: true },
@@ -30,7 +30,7 @@
  * const User = model('User', userSchema)
  * ```
  *
- * @module mondoose
+ * @module mondoo
  */
 
 // ============ $ Namespace (Zod-style API) ============
@@ -159,7 +159,7 @@ export {
 // ============ Connection ============
 export {
   Connection,
-  createMondoose,
+  createMondoo,
   connect,
   disconnect,
   defaultConnection,
@@ -183,7 +183,7 @@ import { Query } from './query/index.js'
 import { Aggregate } from './aggregate/index.js'
 import {
   Connection,
-  createMondoose,
+  createMondoo,
   connect,
   disconnect,
   connection,
@@ -192,9 +192,9 @@ import {
 import { populate } from './population/index.js'
 
 /**
- * The main mondoose export - mimics mongoose's default export
+ * The main mondoo export - mimics mongoose's default export
  */
-const mondoose = {
+const mondoo = {
   // $ API
   $,
 
@@ -217,7 +217,7 @@ const mondoose = {
   modelNames,
 
   // Connection management
-  createMondoose,
+  createMondoo,
   connect,
   disconnect,
   connection,
@@ -230,4 +230,4 @@ const mondoose = {
   version: '0.1.0',
 }
 
-export default mondoose
+export default mondoo

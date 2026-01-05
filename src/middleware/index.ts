@@ -1,5 +1,5 @@
 /**
- * Middleware/Hooks System for Mondoose
+ * Middleware/Hooks System for Mondoo
  *
  * Implements Mongoose-compatible pre/post hooks for documents, queries, models, and aggregations.
  */

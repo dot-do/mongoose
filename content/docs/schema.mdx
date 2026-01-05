@@ -5,14 +5,14 @@ description: Define document structure with schemas, types, validation, virtuals
 
 # Schema
 
-Schemas define the structure and validation rules for your documents. Mondoose supports both Mongoose-style and `$` API schema definitions.
+Schemas define the structure and validation rules for your documents. Mondoo supports both Mongoose-style and `$` API schema definitions.
 
 ## Defining Schemas
 
 ### Mongoose-Style Schema
 
 ```typescript
-import { Schema, Types } from 'mondoose'
+import { Schema, Types } from 'mondoo'
 
 const userSchema = new Schema({
   // Simple type shorthand
@@ -52,7 +52,7 @@ const userSchema = new Schema({
 ### $ API Schema (TypeScript-First)
 
 ```typescript
-import { $ } from 'mondoose'
+import { $ } from 'mondoo'
 
 const userSchema = $.schema({
   name: $.string().required(),

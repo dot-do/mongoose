@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   Connection,
-  createMondoose,
+  createMondoo,
   connect,
   disconnect,
   defaultConnection,
@@ -386,22 +386,22 @@ describe('Connection', () => {
   })
 })
 
-describe('createMondoose()', () => {
+describe('createMondoo()', () => {
   it('creates connected instance', () => {
     const env = { MONDODB: {} as any }
 
-    const mondoose = createMondoose(env)
+    const mondoo = createMondoo(env)
 
-    expect(mondoose).toBeInstanceOf(Connection)
-    expect(mondoose.isConnected()).toBe(true)
+    expect(mondoo).toBeInstanceOf(Connection)
+    expect(mondoo.isConnected()).toBe(true)
   })
 
   it('applies options', () => {
     const env = { MONDODB: {} as any }
 
-    const mondoose = createMondoose(env, { dbName: 'mydb' })
+    const mondoo = createMondoo(env, { dbName: 'mydb' })
 
-    expect(mondoose.options.dbName).toBe('mydb')
+    expect(mondoo.options.dbName).toBe('mydb')
   })
 })
 

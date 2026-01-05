@@ -9,7 +9,7 @@ Middleware (pre/post hooks) are functions that execute before or after specific 
 
 ## Hook Types
 
-Mondoose supports four types of middleware:
+Mondoo supports four types of middleware:
 
 1. **Document middleware** - `validate`, `save`, `remove`, `updateOne`, `deleteOne`, `init`
 2. **Query middleware** - `find`, `findOne`, `updateOne`, `deleteOne`, `updateMany`, `deleteMany`
@@ -339,7 +339,7 @@ userSchema.pre('save', async function(next) {
 ## TypeScript Support
 
 ```typescript
-import { Schema, PreMiddlewareFunction, PostMiddlewareFunction } from 'mondoose'
+import { Schema, PreMiddlewareFunction, PostMiddlewareFunction } from 'mondoo'
 
 interface User {
   name: string

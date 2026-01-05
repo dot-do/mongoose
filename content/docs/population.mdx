@@ -387,7 +387,7 @@ post.depopulate()
 Check if a path is currently populated:
 
 ```typescript
-import { isPopulated } from 'mondoose'
+import { isPopulated } from 'mondoo'
 
 const post = await Post.findById(id)
 isPopulated(post, 'author')  // false
@@ -414,7 +414,7 @@ post.author.save  // undefined - no methods
 
 ### Batch Optimization
 
-Mondoose automatically batches population queries:
+Mondoo automatically batches population queries:
 
 ```typescript
 // This executes ONE query to User, not 100
@@ -491,7 +491,7 @@ const user = await User.findById(userId)
 ## TypeScript Types
 
 ```typescript
-import { PopulatedDoc, ObjectId } from 'mondoose'
+import { PopulatedDoc, ObjectId } from 'mondoo'
 
 interface User {
   name: string

@@ -1,18 +1,18 @@
 ---
 title: Getting Started
-description: Install and configure Mondoose for your Cloudflare Workers project
+description: Install and configure Mondoo for your Cloudflare Workers project
 ---
 
 # Getting Started
 
-Mondoose is a Mongoose-compatible ODM for Cloudflare Durable Objects. It provides two APIs:
+Mondoo is a Mongoose-compatible ODM for Cloudflare Durable Objects. It provides two APIs:
 - **$ API** - A modern, Zod-style TypeScript-first API (recommended for new projects)
 - **Schema/Model API** - Mongoose-compatible API for easy migration
 
 ## Installation
 
 ```bash
-npm install mondoose mondodb
+npm install mondoo mondodb
 ```
 
 ## Quick Start
@@ -22,7 +22,7 @@ npm install mondoose mondodb
 The `$` API provides a fluent, type-safe way to define schemas:
 
 ```typescript
-import { $, model, createMondoose } from 'mondoose'
+import { $, model, createMondoo } from 'mondoo'
 
 // Define a schema using the $ API
 const userSchema = $.schema({
@@ -45,7 +45,7 @@ const User = model('User', userSchema)
 For projects migrating from Mongoose, the traditional API is fully supported:
 
 ```typescript
-import { Schema, model } from 'mondoose'
+import { Schema, model } from 'mondoo'
 
 const userSchema = new Schema({
   name: { type: String, required: true },
@@ -62,11 +62,11 @@ const User = model('User', userSchema)
 
 ## Cloudflare Workers Integration
 
-Mondoose is designed specifically for Cloudflare Workers with Durable Objects:
+Mondoo is designed specifically for Cloudflare Workers with Durable Objects:
 
 ```typescript
 // worker.ts
-import { createMondoose } from 'mondoose'
+import { createMondoo } from 'mondoo'
 import { userSchema, postSchema } from './schemas'
 
 interface Env {
@@ -75,12 +75,12 @@ interface Env {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // Create a mondoose instance with the Worker environment
-    const mondoose = createMondoose(env)
+    // Create a mondoo instance with the Worker environment
+    const mondoo = createMondoo(env)
 
     // Register models
-    const User = mondoose.model('User', userSchema)
-    const Post = mondoose.model('Post', postSchema)
+    const User = mondoo.model('User', userSchema)
+    const Post = mondoo.model('Post', postSchema)
 
     // Use the models
     const users = await User.find({ role: 'admin' })
@@ -119,10 +119,10 @@ await User.deleteOne({ email: 'john@example.com' })
 
 ## TypeScript Support
 
-Mondoose is built with TypeScript and provides excellent type inference:
+Mondoo is built with TypeScript and provides excellent type inference:
 
 ```typescript
-import { $, model, Document } from 'mondoose'
+import { $, model, Document } from 'mondoo'
 
 const userSchema = $.schema({
   name: $.string().required(),

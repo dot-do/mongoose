@@ -1,5 +1,5 @@
 {
-  "name": "mondoose",
+  "name": "mondoo",
   "version": "0.1.0",
   "description": "Mongoose-compatible ODM for Cloudflare Durable Objects with TypeScript-first $ API",
   "type": "module",
@@ -41,7 +41,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nathanclevenger/mondoose"
+    "url": "https://github.com/nathanclevenger/mondoo"
   },
   "peerDependencies": {
     "mondodb": ">=0.1.0"
